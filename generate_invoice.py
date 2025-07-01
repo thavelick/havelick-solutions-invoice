@@ -11,6 +11,16 @@ import sys
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
+# Company data (static)
+COMPANY_DATA = {
+    "company": {
+        "name": "Havelick Software Solutions, LLC",
+        "address": "7815 Robinson Way\nArvada CO 80004",
+        "email": "tristan@havelick.com",
+        "phone": "303-475-7244",
+    }
+}
+
 
 def parse_invoice_data(filename):
     """Parse tab-separated invoice data file"""
@@ -50,48 +60,33 @@ def parse_invoice_data(filename):
     return items
 
 
-def main():
-    """Main function to generate invoice from client and invoice data files."""
-    # Check for arguments
-    if len(sys.argv) < 3:
-        print("Usage: python generate_invoice.py <client_file.json> <invoice_data.txt>")
-        sys.exit(1)
-
-    client_file = sys.argv[1]
-    invoice_data_file = sys.argv[2]
-
-    # Load client data
+def load_client_data(filepath):
+    """Load and validate client data from JSON file."""
     try:
-        with open(client_file, "r", encoding="utf-8") as f:
-            client_data = json.load(f)
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
     except FileNotFoundError:
-        print(f"Error: Client file '{client_file}' not found")
+        print(f"Error: Client file '{filepath}' not found")
         sys.exit(1)
     except json.JSONDecodeError:
-        print(f"Error: Invalid JSON in '{client_file}'")
+        print(f"Error: Invalid JSON in '{filepath}'")
         sys.exit(1)
 
-    # Load invoice data
+
+def load_invoice_items(filepath):
+    """Load invoice items from tab-separated file."""
     try:
-        items = parse_invoice_data(invoice_data_file)
+        return parse_invoice_data(filepath)
     except FileNotFoundError:
-        print(f"Error: Invoice data file '{invoice_data_file}' not found")
+        print(f"Error: Invoice data file '{filepath}' not found")
         sys.exit(1)
     except (ValueError, IndexError) as e:
         print(f"Error parsing invoice data: {e}")
         sys.exit(1)
 
-    # Company data (static)
-    company_data = {
-        "company": {
-            "name": "Havelick Software Solutions, LLC",
-            "address": "7815 Robinson Way\nArvada CO 80004",
-            "email": "tristan@havelick.com",
-            "phone": "303-475-7244",
-        }
-    }
 
-    # Generate invoice metadata from filename
+def generate_invoice_metadata(invoice_data_file):
+    """Generate invoice number and dates from filename."""
     base_name = os.path.splitext(os.path.basename(invoice_data_file))[0]
     if base_name.startswith("invoice-data-"):
         date_part = base_name.replace("invoice-data-", "")
@@ -108,20 +103,15 @@ def main():
         invoice_date = "XX/XX/2025"
         due_date = "XX/XX/2025"
 
-    # Combine data
-    data = {
-        **company_data,
-        **client_data,
-        "items": items,
+    return {
         "invoice_number": invoice_number,
         "invoice_date": invoice_date,
         "due_date": due_date,
     }
 
-    # Calculate total
-    total = sum(item["quantity"] * item["rate"] for item in data["items"])
-    data["total"] = total
 
+def generate_invoice_files(data):
+    """Generate HTML and PDF invoice files from data."""
     # Setup Jinja2 environment
     env = Environment(loader=FileSystemLoader("."))
     template = env.get_template("invoice_template.html")
@@ -136,7 +126,37 @@ def main():
     # Generate PDF from HTML
     HTML(filename="invoice.html").write_pdf("invoice.pdf")
 
-    print(f"Invoice generated: invoice.html and invoice.pdf (Total: ${total:.2f})")
+    print(
+        f"Invoice generated: invoice.html and invoice.pdf (Total: ${data['total']:.2f})"
+    )
+
+
+def main():
+    """Main function to generate invoice from client and invoice data files."""
+    # Check for arguments
+    if len(sys.argv) < 3:
+        print("Usage: python generate_invoice.py <client_file.json> <invoice_data.txt>")
+        sys.exit(1)
+
+    client_file = sys.argv[1]
+    invoice_data_file = sys.argv[2]
+
+    # Load data using helper functions
+    client_data = load_client_data(client_file)
+    items = load_invoice_items(invoice_data_file)
+    invoice_metadata = generate_invoice_metadata(invoice_data_file)
+
+    # Combine all data
+    data = {
+        **COMPANY_DATA,
+        **client_data,
+        **invoice_metadata,
+        "items": items,
+        "total": sum(item["quantity"] * item["rate"] for item in items),
+    }
+
+    # Generate output files
+    generate_invoice_files(data)
 
 
 if __name__ == "__main__":
