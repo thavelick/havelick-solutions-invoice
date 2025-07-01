@@ -4,6 +4,26 @@
   <meta charset="UTF-8">
   <title>Invoice {{ invoice_number }}</title>
   <style>
+    /* ---------- Print/PDF Styles ---------- */
+    @page {
+      size: letter;
+      margin: 0;
+    }
+    @media print {
+      body {
+        background-color: white;
+        margin: 0;
+        padding: 0;
+      }
+      .invoice-container {
+        max-width: 100%;
+        margin: 0;
+        padding: 32px;
+        border: none;
+        box-shadow: none;
+      }
+    }
+
     /* ---------- Reset & Base ---------- */
     *, *::before, *::after { box-sizing: border-box; }
     body {
