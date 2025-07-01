@@ -22,40 +22,49 @@ COMPANY_DATA = {
 }
 
 
+def _parse_invoice_line(line):
+    """Parse a single invoice data line."""
+    parts = line.split("\t")
+    if len(parts) < 4:
+        return None
+
+    date_str = parts[0].strip()
+    quantity = float(parts[1].strip())
+    amount_str = parts[2].strip().replace("$", "").replace(",", "")
+    description = parts[3].strip()
+
+    # Calculate rate from amount and quantity
+    amount = float(amount_str)
+    rate = amount / quantity if quantity > 0 else 0
+
+    # Convert date format from M/D/YYYY to MM/DD/YYYY
+    month, day, year = date_str.split("/")
+    formatted_date = f"{month.zfill(2)}/{day.zfill(2)}/{year}"
+
+    return {
+        "date": formatted_date,
+        "description": description,
+        "quantity": quantity,
+        "rate": rate,
+    }
+
+
 def parse_invoice_data(filename):
     """Parse tab-separated invoice data file"""
     items = []
     with open(filename, "r", encoding="utf-8") as f:
-        for line in f:
+        lines = f.readlines()
+        # Skip header row if it exists
+        start_index = 1 if lines and "Date" in lines[0] and "Hours" in lines[0] else 0
+
+        for line in lines[start_index:]:
             line = line.strip()
             if not line:
                 continue
 
-            parts = line.split("\t")
-            if len(parts) < 4:
-                continue
-
-            date_str = parts[0].strip()
-            quantity = float(parts[1].strip())
-            amount_str = parts[2].strip().replace("$", "").replace(",", "")
-            description = parts[3].strip()
-
-            # Calculate rate from amount and quantity
-            amount = float(amount_str)
-            rate = amount / quantity if quantity > 0 else 0
-
-            # Convert date format from M/D/YYYY to MM/DD/YYYY
-            month, day, year = date_str.split("/")
-            formatted_date = f"{month.zfill(2)}/{day.zfill(2)}/{year}"
-
-            items.append(
-                {
-                    "date": formatted_date,
-                    "description": description,
-                    "quantity": quantity,
-                    "rate": rate,
-                }
-            )
+            item = _parse_invoice_line(line)
+            if item:
+                items.append(item)
 
     return items
 
@@ -119,15 +128,29 @@ def generate_invoice_files(data):
     # Render template
     html_output = template.render(**data)
 
+    # Create filename based on client company name and invoice date
+    company_name = (
+        data["client"]["name"]
+        .lower()
+        .replace(" ", "-")
+        .replace(",", "")
+        .replace(".", "")
+    )
+    invoice_date = data["invoice_date"].replace("/", ".")
+    base_filename = f"{company_name}-invoice-{invoice_date}"
+
+    html_filename = f"{base_filename}.html"
+    pdf_filename = f"{base_filename}.pdf"
+
     # Write HTML output
-    with open("invoice.html", "w", encoding="utf-8") as f:
+    with open(html_filename, "w", encoding="utf-8") as f:
         f.write(html_output)
 
     # Generate PDF from HTML
-    HTML(filename="invoice.html").write_pdf("invoice.pdf")
+    HTML(filename=html_filename).write_pdf(pdf_filename)
 
     print(
-        f"Invoice generated: invoice.html and invoice.pdf (Total: ${data['total']:.2f})"
+        f"Invoice generated: {html_filename} and {pdf_filename} (Total: ${data['total']:.2f})"
     )
 
 

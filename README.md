@@ -36,8 +36,9 @@ Contains client information and payment terms:
 ```
 
 ### Invoice Data Files (`invoice-data-<M-D>.txt`)
-Tab-separated format (no header required):
+Tab-separated format with optional header:
 ```
+Date	Hours	 Amt 	Description
 3/15/2025	2	$250.00	Website development
 3/18/2025	1.5	$187.50	Code review and testing
 3/22/2025	3	$375.00	Database optimization
@@ -45,14 +46,16 @@ Tab-separated format (no header required):
 
 Format: `Date	Quantity	Amount	Description`
 
+Note: Header row is optional and will be automatically skipped if detected.
+
 The filename format `invoice-data-<M-D>.txt` automatically generates:
 - Invoice number: `2025.MM.DD`
 - Invoice date: `MM/DD/2025`
 - Due date: 30 days later
 
 ### Generated Output
-- Creates `invoice.html` with complete invoice
-- Creates `invoice.pdf` automatically using WeasyPrint
+- Creates `<client-name>-invoice-<MM.DD.YYYY>.html` with complete invoice
+- Creates `<client-name>-invoice-<MM.DD.YYYY>.pdf` automatically using WeasyPrint
 - Uses company information from `generate_invoice.py`
 - Calculates totals automatically
 
