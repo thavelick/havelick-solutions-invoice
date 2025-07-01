@@ -4,6 +4,7 @@
 Generates HTML and PDF invoices from client data and tab-separated invoice data files.
 """
 
+import argparse
 import json
 import os
 import sys
@@ -119,7 +120,7 @@ def generate_invoice_metadata(invoice_data_file):
     }
 
 
-def generate_invoice_files(data):
+def generate_invoice_files(data, output_dir="."):
     """Generate HTML and PDF invoice files from data."""
     # Setup Jinja2 environment
     env = Environment(loader=FileSystemLoader("."))
@@ -139,8 +140,9 @@ def generate_invoice_files(data):
     invoice_date = data["invoice_date"].replace("/", ".")
     base_filename = f"{company_name}-invoice-{invoice_date}"
 
-    html_filename = f"{base_filename}.html"
-    pdf_filename = f"{base_filename}.pdf"
+    # Create full paths using output directory
+    html_filename = os.path.join(output_dir, f"{base_filename}.html")
+    pdf_filename = os.path.join(output_dir, f"{base_filename}.pdf")
 
     # Write HTML output
     with open(html_filename, "w", encoding="utf-8") as f:
@@ -156,13 +158,24 @@ def generate_invoice_files(data):
 
 def main():
     """Main function to generate invoice from client and invoice data files."""
-    # Check for arguments
-    if len(sys.argv) < 3:
-        print("Usage: python generate_invoice.py <client_file.json> <invoice_data.txt>")
-        sys.exit(1)
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description="Generate HTML and PDF invoices from client data and invoice data files"
+    )
+    parser.add_argument("client_file", help="Path to client JSON file")
+    parser.add_argument("invoice_data_file", help="Path to invoice data text file")
+    parser.add_argument(
+        "--output-dir",
+        "-o",
+        default=".",
+        help="Output directory for generated files (default: current directory)",
+    )
 
-    client_file = sys.argv[1]
-    invoice_data_file = sys.argv[2]
+    args = parser.parse_args()
+
+    client_file = args.client_file
+    invoice_data_file = args.invoice_data_file
+    output_dir = args.output_dir
 
     # Load data using helper functions
     client_data = load_client_data(client_file)
@@ -179,7 +192,7 @@ def main():
     }
 
     # Generate output files
-    generate_invoice_files(data)
+    generate_invoice_files(data, output_dir)
 
 
 if __name__ == "__main__":

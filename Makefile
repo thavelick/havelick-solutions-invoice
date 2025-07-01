@@ -31,7 +31,7 @@ lint: # Run linters (isort, black, pyright, pylint)
 	@echo "Running pylint.."
 	uv run pylint *.py tests/
 
-add-dev: # Add development dependency (usage: make add-dev DEP=package-name)
+add-dev-dependency: # Add development dependency (usage: make add-dev-dependency DEP=package-name)
 	@echo "Adding development dependency: $(DEP)"
 	uv add --dev $(DEP)
 
@@ -44,7 +44,7 @@ test: # Run playwright tests
 # command, you need to add it to .PHONY below, otherwise it
 # won't work. E.g. `make run` wouldn't work if you have
 # `run` file in pwd.
-.PHONY: help generate update setup lint add-dev test
+.PHONY: help generate update setup lint add-dev-dependency test
 
 # -----------------------------------------------------------
 # -----       (Makefile helpers and decoration)      --------
