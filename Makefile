@@ -21,12 +21,22 @@ setup: # Setup project
 	uv sync
 	@echo "Done."
 
+lint: # Run linters (isort, black, pyright, pylint)
+	@echo "Running isort import sorter.."
+	uv run isort *.py
+	@echo "Running black formatter.."
+	uv run black *.py
+	@echo "Running pyright type checker.."
+	uv run pyright
+	@echo "Running pylint.."
+	uv run pylint *.py
+
 # -----------------------------------------------------------
 # CAUTION: If you have a file with the same name as make
 # command, you need to add it to .PHONY below, otherwise it
 # won't work. E.g. `make run` wouldn't work if you have
 # `run` file in pwd.
-.PHONY: help generate update setup
+.PHONY: help generate update setup lint
 
 # -----------------------------------------------------------
 # -----       (Makefile helpers and decoration)      --------

@@ -7,3 +7,14 @@ dependencies = [
     "jinja2>=3.1.6",
     "weasyprint>=65.1",
 ]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "pylint>=3.3.7",
+    "pyright>=1.1.402",
+]

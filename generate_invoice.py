@@ -127,9 +127,9 @@ def main():
     # Write HTML output
     with open("invoice.html", "w") as f:
         f.write(html_output)
-    
+
     # Generate PDF from HTML
-    HTML(filename='invoice.html').write_pdf('invoice.pdf')
+    HTML(filename="invoice.html").write_pdf("invoice.pdf")
 
     print(f"Invoice generated: invoice.html and invoice.pdf (Total: ${total:.2f})")
 

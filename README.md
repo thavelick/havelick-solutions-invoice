@@ -56,16 +56,10 @@ The filename format `invoice-data-<M-D>.txt` automatically generates:
 - Uses company information from `generate_invoice.py`
 - Calculates totals automatically
 
-## Commands
+## Make Commands
 
 - `make setup` - Install dependencies
 - `make generate CLIENT=<name> DATA=<file>` - Generate invoice
 - `make update` - Update dependencies
+- `make lint` - Run linters (isort, black, pyright, pylint)
 - `make help` - Show available commands
-
-## Files
-
-- `invoice_template.html` - Jinja2 template (no JavaScript)
-- `generate_invoice.py` - Main generator script
-- `pyproject.toml` - Python project configuration with WeasyPrint dependency
-- `.gitignore` - Excludes client data and generated files
