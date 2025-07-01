@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice {{ invoice_number }}</title>
+  <style>
+    /* ---------- Reset & Base ---------- */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background-color: #f9fafb;
+      color: #2d3748;
+    }
+
+    /* ---------- Container ---------- */
+    .invoice-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 32px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    /* ---------- Header ---------- */
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-bottom: 40px;
+    }
+    .company-info {
+      margin-bottom: 24px;
+    }
+    .company-info h1 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .company-info p {
+      margin: 2px 0;
+      font-size: 14px;
+      color: #718096;
+      white-space: pre-line;
+    }
+    .invoice-title {
+      text-align: right;
+    }
+    .invoice-title h1 {
+      margin: 0 0 16px;
+      font-size: 30px;
+      font-weight: 700;
+      color: #2d3748;
+    }
+    .info-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      font-size: 14px;
+      color: #718096;
+      margin-bottom: 4px;
+    }
+    .info-row span:last-child {
+      color: #000;
+    }
+
+    /* ---------- Bill To ---------- */
+    .bill-to {
+      margin-bottom: 40px;
+    }
+    .bill-to h2 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #718096;
+    }
+    .client-name {
+      margin: 0 0 4px;
+      font-size: 18px;
+      font-weight: 500;
+    }
+    .client-address {
+      margin: 0;
+      font-size: 14px;
+      color: #718096;
+      white-space: pre-line;
+    }
+
+    /* ---------- Items Table ---------- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 40px;
+    }
+    th, td {
+      padding: 12px 8px;
+      font-size: 14px;
+    }
+    thead th {
+      text-align: left;
+      font-weight: 600;
+      color: #718096;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    tbody tr {
+      border-bottom: 1px solid #f1f5f9;
+    }
+    td:nth-child(3),
+    td:nth-child(4),
+    td:nth-child(5) {
+      text-align: right;
+    }
+
+    /* ---------- Total ---------- */
+    .total-row {
+      display: flex;
+      justify-content: flex-end;
+      font-size: 16px;
+      margin-bottom: 40px;
+    }
+    .total-label {
+      font-weight: 600;
+      margin-right: 16px;
+    }
+    .total-amount {
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    /* ---------- Payment Terms ---------- */
+    .payment-terms h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #718096;
+    }
+    .payment-terms p {
+      margin: 0;
+      font-size: 14px;
+      min-height: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="invoice-container">
+    <!-- Header -->
+    <div class="header">
+      <div class="company-info">
+        <h1>{{ company.name }}</h1>
+        <p>{{ company.address }}</p>
+        <p>{{ company.email }}</p>
+        <p>{{ company.phone }}</p>
+      </div>
+      <div class="invoice-title">
+        <h1>INVOICE</h1>
+        <div class="info-row"><span>Invoice #:</span><span>{{ invoice_number }}</span></div>
+        <div class="info-row"><span>Date:</span><span>{{ invoice_date }}</span></div>
+        <div class="info-row"><span>Due Date:</span><span>{{ due_date }}</span></div>
+      </div>
+    </div>
+
+    <!-- Client Info -->
+    <div class="bill-to">
+      <h2>BILL TO</h2>
+      <p class="client-name">{{ client.name }}</p>
+      <p class="client-address">{{ client.address }}</p>
+    </div>
+
+    <!-- Items Table -->
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Quantity</th>
+          <th>Rate</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ item.date }}</td>
+          <td>{{ item.description }}</td>
+          <td style="text-align: right;">{{ item.quantity }}</td>
+          <td style="text-align: right;">${{ "%.2f"|format(item.rate) }}</td>
+          <td style="text-align: right;">${{ "%.2f"|format(item.quantity * item.rate) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Total -->
+    <div class="total-row">
+      <span class="total-label">Total:</span>
+      <span class="total-amount">${{ "%.2f"|format(total) }}</span>
+    </div>
+
+    <!-- Payment Terms -->
+    <div class="payment-terms">
+      <h3>PAYMENT TERMS</h3>
+      <p>{{ payment_terms }}</p>
+    </div>
+  </div>
+
+</body>
+</html>

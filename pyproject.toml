@@ -1,0 +1,8 @@
+[project]
+name = "havelick-solutions-invoice"
+version = "0.1.0"
+description = "Invoice generator for Havelick Software Solutions"
+requires-python = ">=3.13"
+dependencies = [
+    "jinja2>=3.1.6",
+]
