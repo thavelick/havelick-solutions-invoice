@@ -7,31 +7,24 @@ def test_invoice_generation_and_content(
     tmp_path, test_data_files, invoice_generator, page: Page
 ):
     """Test that invoice generation creates HTML file with expected content."""
-
-    # Generate invoice using fixtures
     result, html_file, pdf_file = invoice_generator(
         test_data_files["client"], test_data_files["invoice_data"], tmp_path
     )
 
-    # Check that command succeeded
     assert (
         result.returncode == 0
     ), f"Invoice generation failed: {result.stderr}\nStdout: {result.stdout}"
 
-    # Verify expected files were created
     assert html_file.exists(), f"Expected HTML file not found: {html_file}"
     assert pdf_file.exists(), f"Expected PDF file not found: {pdf_file}"
 
-    # Use playwright to open and examine the HTML file
     page.goto(f"file://{html_file.absolute()}")
 
-    # Check that the page contains "invoice" (case-insensitive)
     page_content = page.content().lower()
     assert (
         "invoice" in page_content
     ), "Generated HTML does not contain the word 'invoice'"
 
-    # Additional checks
     assert "acme corp" in page_content, "Client name not found in generated invoice"
     assert (
         "website development" in page_content
