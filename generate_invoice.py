@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""Invoice generator for Havelick Software Solutions.
+
+Generates HTML and PDF invoices from client data and tab-separated invoice data files.
+"""
 
 import json
 import os
@@ -47,6 +51,7 @@ def parse_invoice_data(filename):
 
 
 def main():
+    """Main function to generate invoice from client and invoice data files."""
     # Check for arguments
     if len(sys.argv) < 3:
         print("Usage: python generate_invoice.py <client_file.json> <invoice_data.txt>")
