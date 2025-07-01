@@ -23,13 +23,13 @@ setup: # Setup project
 
 lint: # Run linters (isort, black, pyright, pylint)
 	@echo "Running isort import sorter.."
-	uv run isort *.py
+	uv run isort *.py tests/
 	@echo "Running black formatter.."
-	uv run black *.py
+	uv run black *.py tests/
 	@echo "Running pyright type checker.."
 	uv run pyright
 	@echo "Running pylint.."
-	uv run pylint *.py
+	uv run pylint *.py tests/
 
 add-dev: # Add development dependency (usage: make add-dev DEP=package-name)
 	@echo "Adding development dependency: $(DEP)"
