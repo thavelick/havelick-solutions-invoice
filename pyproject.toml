@@ -5,4 +5,5 @@ description = "Invoice generator for Havelick Software Solutions"
 requires-python = ">=3.13"
 dependencies = [
     "jinja2>=3.1.6",
+    "weasyprint>=65.1",
 ]

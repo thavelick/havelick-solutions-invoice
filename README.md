@@ -52,6 +52,7 @@ The filename format `invoice-data-<M-D>.txt` automatically generates:
 
 ### Generated Output
 - Creates `invoice.html` with complete invoice
+- Creates `invoice.pdf` automatically using WeasyPrint
 - Uses company information from `generate_invoice.py`
 - Calculates totals automatically
 
@@ -66,5 +67,5 @@ The filename format `invoice-data-<M-D>.txt` automatically generates:
 
 - `invoice_template.html` - Jinja2 template (no JavaScript)
 - `generate_invoice.py` - Main generator script
-- `pyproject.toml` - Python project configuration
+- `pyproject.toml` - Python project configuration with WeasyPrint dependency
 - `.gitignore` - Excludes client data and generated files
