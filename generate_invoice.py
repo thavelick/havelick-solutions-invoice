@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 
+import json
+import os
+import sys
+
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
-import json
-import sys
 
 
 def parse_invoice_data(filename):
     """Parse tab-separated invoice data file"""
     items = []
-    with open(filename, "r") as f:
+    with open(filename, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -55,7 +57,7 @@ def main():
 
     # Load client data
     try:
-        with open(client_file, "r") as f:
+        with open(client_file, "r", encoding="utf-8") as f:
             client_data = json.load(f)
     except FileNotFoundError:
         print(f"Error: Client file '{client_file}' not found")
@@ -70,7 +72,7 @@ def main():
     except FileNotFoundError:
         print(f"Error: Invoice data file '{invoice_data_file}' not found")
         sys.exit(1)
-    except Exception as e:
+    except (ValueError, IndexError) as e:
         print(f"Error parsing invoice data: {e}")
         sys.exit(1)
 
@@ -85,8 +87,6 @@ def main():
     }
 
     # Generate invoice metadata from filename
-    import os
-
     base_name = os.path.splitext(os.path.basename(invoice_data_file))[0]
     if base_name.startswith("invoice-data-"):
         date_part = base_name.replace("invoice-data-", "")
@@ -125,7 +125,7 @@ def main():
     html_output = template.render(**data)
 
     # Write HTML output
-    with open("invoice.html", "w") as f:
+    with open("invoice.html", "w", encoding="utf-8") as f:
         f.write(html_output)
 
     # Generate PDF from HTML
