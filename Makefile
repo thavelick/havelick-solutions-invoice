@@ -23,20 +23,28 @@ setup: # Setup project
 
 lint: # Run linters (isort, black, pyright, pylint)
 	@echo "Running isort import sorter.."
-	uv run isort *.py
+	uv run isort *.py tests/
 	@echo "Running black formatter.."
-	uv run black *.py
+	uv run black *.py tests/
 	@echo "Running pyright type checker.."
 	uv run pyright
 	@echo "Running pylint.."
-	uv run pylint *.py
+	uv run pylint *.py tests/
+
+add-dev-dependency: # Add development dependency (usage: make add-dev-dependency DEP=package-name)
+	@echo "Adding development dependency: $(DEP)"
+	uv add --dev $(DEP)
+
+test: # Run playwright tests
+	@echo "Running tests.."
+	uv run pytest tests/
 
 # -----------------------------------------------------------
 # CAUTION: If you have a file with the same name as make
 # command, you need to add it to .PHONY below, otherwise it
 # won't work. E.g. `make run` wouldn't work if you have
 # `run` file in pwd.
-.PHONY: help generate update setup lint
+.PHONY: help generate update setup lint add-dev-dependency test
 
 # -----------------------------------------------------------
 # -----       (Makefile helpers and decoration)      --------
