@@ -4,8 +4,52 @@
 import os
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
+
+# Constants
+HAVELICK_SOLUTIONS_VENDOR_ID = 1
+
+
+def parse_date_safely(date_str: str, date_format: str = "%m/%d/%Y") -> str:
+    """Parse date string with validation and convert to YYYY-MM-DD format."""
+    try:
+        parsed = datetime.strptime(date_str, date_format)
+        return parsed.strftime("%Y-%m-%d")
+    except ValueError as e:
+        raise ValueError(f"Invalid date format: {date_str}. Expected format: {date_format}") from e
+
+
+def parse_date_to_display(date_str: str, date_format: str = "%m/%d/%Y") -> str:
+    """Parse date string and convert to MM/DD/YYYY format for display."""
+    try:
+        parsed = datetime.strptime(date_str, date_format)
+        return parsed.strftime("%m/%d/%Y")
+    except ValueError as e:
+        raise ValueError(f"Invalid date format: {date_str}. Expected format: {date_format}") from e
+
+
+def validate_amount(amount: str) -> float:
+    """Validate and convert amount string to float."""
+    try:
+        # Remove currency symbols and commas
+        cleaned = amount.replace("$", "").replace(",", "").strip()
+        value = float(cleaned)
+        if value < 0:
+            raise ValueError("Amount cannot be negative")
+        return value
+    except ValueError as e:
+        raise ValueError(f"Invalid amount: {amount}") from e
+
+
+def calculate_due_date(invoice_date_str: str, days_out: int = 30) -> str:
+    """Calculate due date by adding specified days to invoice date."""
+    try:
+        invoice_date = datetime.strptime(invoice_date_str, "%m/%d/%Y")
+        due_date = invoice_date + timedelta(days=days_out)
+        return due_date.strftime("%m/%d/%Y")
+    except ValueError as e:
+        raise ValueError(f"Invalid invoice date format: {invoice_date_str}") from e
 
 
 class InvoiceDB:
@@ -164,8 +208,8 @@ class InvoiceDB:
             cursor.execute("""
                 INSERT INTO invoices (invoice_number, customer_id, vendor_id, 
                                     invoice_date, due_date, total_amount)
-                VALUES (?, ?, 1, ?, ?, ?)
-            """, (invoice_number, customer_id, invoice_date, due_date, total_amount))
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (invoice_number, customer_id, HAVELICK_SOLUTIONS_VENDOR_ID, invoice_date, due_date, total_amount))
             return cursor.lastrowid
     
     def add_invoice_item(self, invoice_id: int, work_date: str, description: str,
@@ -275,37 +319,49 @@ class InvoiceDB:
                                  items: List[Dict[str, Any]]) -> int:
         """Import invoice from TSV file data."""
         
-        # Generate invoice metadata from filename
-        base_name = os.path.splitext(os.path.basename(invoice_data_file))[0]
-        if base_name.startswith("invoice-data-"):
-            date_part = base_name.replace("invoice-data-", "")
-            month, day = date_part.split("-")
-            invoice_number = f"2025.{month.zfill(2)}.{day.zfill(2)}"
-            invoice_date = f"{month.zfill(2)}/{day.zfill(2)}/2025"
-            # Due date is 30 days later (simplified)
-            due_month = int(month) + 1 if int(month) < 12 else 1
-            due_year = 2025 if int(month) < 12 else 2026
-            due_date = f"{due_month:02d}/{day.zfill(2)}/{due_year}"
-        else:
-            invoice_number = f"2025.{datetime.now().month:02d}.{datetime.now().day:02d}"
-            invoice_date = datetime.now().strftime("%m/%d/%Y")
-            due_date = datetime.now().strftime("%m/%d/%Y")
-        
-        # Calculate total
-        total_amount = sum(item["quantity"] * item["rate"] for item in items)
-        
-        # Create invoice
-        invoice_id = self.create_invoice(invoice_number, customer_id, 
-                                       invoice_date, due_date, total_amount)
-        
-        # Add items
-        for item in items:
-            # Convert date format from MM/DD/YYYY to YYYY-MM-DD for database
-            date_parts = item["date"].split("/")
-            work_date = f"{date_parts[2]}-{date_parts[0]}-{date_parts[1]}"
+        try:
+            # Generate invoice metadata from filename
+            base_name = os.path.splitext(os.path.basename(invoice_data_file))[0]
+            if base_name.startswith("invoice-data-"):
+                date_part = base_name.replace("invoice-data-", "")
+                try:
+                    month, day = date_part.split("-")
+                    invoice_number = f"2025.{month.zfill(2)}.{day.zfill(2)}"
+                    invoice_date = f"{month.zfill(2)}/{day.zfill(2)}/2025"
+                    # Calculate due date 30 days out
+                    due_date = calculate_due_date(invoice_date, 30)
+                except ValueError as e:
+                    raise ValueError(f"Invalid filename format: {invoice_data_file}. Expected format: invoice-data-M-D.txt") from e
+            else:
+                # Fallback to current date
+                now = datetime.now()
+                invoice_number = f"2025.{now.month:02d}.{now.day:02d}"
+                invoice_date = now.strftime("%m/%d/%Y")
+                due_date = calculate_due_date(invoice_date, 30)
             
-            amount = item["quantity"] * item["rate"]
-            self.add_invoice_item(invoice_id, work_date, item["description"],
-                                item["quantity"], item["rate"], amount)
-        
-        return invoice_id
+            # Validate and calculate total
+            total_amount = 0.0
+            for item in items:
+                if not isinstance(item.get("quantity"), (int, float)) or item["quantity"] <= 0:
+                    raise ValueError(f"Invalid quantity for item: {item}")
+                if not isinstance(item.get("rate"), (int, float)) or item["rate"] < 0:
+                    raise ValueError(f"Invalid rate for item: {item}")
+                total_amount += item["quantity"] * item["rate"]
+            
+            # Create invoice
+            invoice_id = self.create_invoice(invoice_number, customer_id, 
+                                           invoice_date, due_date, total_amount)
+            
+            # Add items
+            for item in items:
+                # Convert date format from MM/DD/YYYY to YYYY-MM-DD for database
+                work_date = parse_date_safely(item["date"], "%m/%d/%Y")
+                
+                amount = item["quantity"] * item["rate"]
+                self.add_invoice_item(invoice_id, work_date, item["description"],
+                                    item["quantity"], item["rate"], amount)
+            
+            return invoice_id
+            
+        except (ValueError, KeyError, TypeError) as e:
+            raise ValueError(f"Error importing invoice from files: {e}") from e

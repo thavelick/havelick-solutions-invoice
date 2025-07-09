@@ -9,13 +9,13 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Any
 
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
-from database import InvoiceDB
+from database import InvoiceDB, parse_date_safely, parse_date_to_display, validate_amount, calculate_due_date
 
 # Company data (static)
 COMPANY_DATA = {
@@ -34,95 +34,152 @@ def _parse_invoice_line(line):
     if len(parts) < 4:
         return None
 
-    date_str = parts[0].strip()
-    quantity = float(parts[1].strip())
-    amount_str = parts[2].strip().replace("$", "").replace(",", "")
-    description = parts[3].strip()
+    try:
+        date_str = parts[0].strip()
+        quantity_str = parts[1].strip()
+        amount_str = parts[2].strip()
+        description = parts[3].strip()
 
-    # Calculate rate from amount and quantity
-    amount = float(amount_str)
-    rate = amount / quantity if quantity > 0 else 0
+        # Validate and parse quantity
+        try:
+            quantity = float(quantity_str)
+            if quantity <= 0:
+                raise ValueError(f"Quantity must be positive: {quantity}")
+        except ValueError as e:
+            raise ValueError(f"Invalid quantity '{quantity_str}': {e}") from e
 
-    # Convert date format from M/D/YYYY to MM/DD/YYYY
-    month, day, year = date_str.split("/")
-    formatted_date = f"{month.zfill(2)}/{day.zfill(2)}/{year}"
+        # Validate and parse amount
+        try:
+            amount = validate_amount(amount_str)
+        except ValueError as e:
+            raise ValueError(f"Invalid amount '{amount_str}': {e}") from e
 
-    return {
-        "date": formatted_date,
-        "description": description,
-        "quantity": quantity,
-        "rate": rate,
-    }
+        # Calculate rate from amount and quantity
+        rate = amount / quantity if quantity > 0 else 0
+
+        # Parse and normalize date format
+        try:
+            # Handle both M/D/YYYY and MM/DD/YYYY formats
+            if "/" in date_str:
+                # Try parsing as is first
+                try:
+                    formatted_date = parse_date_to_display(date_str, "%m/%d/%Y")
+                except ValueError:
+                    # Try parsing with single digit month/day
+                    month, day, year = date_str.split("/")
+                    formatted_date = f"{month.zfill(2)}/{day.zfill(2)}/{year}"
+                    # Validate the formatted date
+                    parse_date_to_display(formatted_date, "%m/%d/%Y")
+            else:
+                raise ValueError(f"Invalid date format: {date_str}")
+        except ValueError as e:
+            raise ValueError(f"Invalid date '{date_str}': {e}") from e
+
+        return {
+            "date": formatted_date,
+            "description": description,
+            "quantity": quantity,
+            "rate": rate,
+        }
+    except ValueError as e:
+        raise ValueError(f"Error parsing invoice line '{line.strip()}': {e}") from e
 
 
 def parse_invoice_data(filename):
     """Parse tab-separated invoice data file"""
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"Invoice data file not found: {filename}")
+    
     items = []
-    with open(filename, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-        # Skip header row if it exists
-        start_index = 1 if lines and "Date" in lines[0] and "Hours" in lines[0] else 0
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            # Skip header row if it exists
+            start_index = 1 if lines and "Date" in lines[0] and "Hours" in lines[0] else 0
 
-        for line in lines[start_index:]:
-            line = line.strip()
-            if not line:
-                continue
+            for line_num, line in enumerate(lines[start_index:], start=start_index + 1):
+                line = line.strip()
+                if not line:
+                    continue
 
-            item = _parse_invoice_line(line)
-            if item:
-                items.append(item)
-
+                try:
+                    item = _parse_invoice_line(line)
+                    if item:
+                        items.append(item)
+                except ValueError as e:
+                    raise ValueError(f"Error parsing line {line_num}: {e}") from e
+    except IOError as e:
+        raise IOError(f"Error reading file {filename}: {e}") from e
+    
+    if not items:
+        raise ValueError(f"No valid invoice items found in {filename}")
+    
     return items
 
 
 def load_client_data(filepath):
     """Load and validate client data from JSON file."""
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"Client file not found: {filepath}")
+    
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print(f"Error: Client file '{filepath}' not found")
-        sys.exit(1)
-    except json.JSONDecodeError:
-        print(f"Error: Invalid JSON in '{filepath}'")
-        sys.exit(1)
+            data = json.load(f)
+            
+            # Validate required fields
+            if "client" not in data:
+                raise ValueError(f"Client data missing 'client' field in {filepath}")
+            
+            client = data["client"]
+            if not client.get("name"):
+                raise ValueError(f"Client name is required in {filepath}")
+            if not client.get("address"):
+                raise ValueError(f"Client address is required in {filepath}")
+            
+            return data
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in {filepath}: {e}") from e
+    except IOError as e:
+        raise IOError(f"Error reading file {filepath}: {e}") from e
 
 
 def load_invoice_items(filepath):
     """Load invoice items from tab-separated file."""
     try:
         return parse_invoice_data(filepath)
-    except FileNotFoundError:
-        print(f"Error: Invoice data file '{filepath}' not found")
-        sys.exit(1)
-    except (ValueError, IndexError) as e:
-        print(f"Error parsing invoice data: {e}")
-        sys.exit(1)
+    except (FileNotFoundError, ValueError, IOError) as e:
+        raise ValueError(f"Error loading invoice items: {e}") from e
 
 
 def generate_invoice_metadata(invoice_data_file):
     """Generate invoice number and dates from filename."""
-    base_name = os.path.splitext(os.path.basename(invoice_data_file))[0]
-    if base_name.startswith("invoice-data-"):
-        date_part = base_name.replace("invoice-data-", "")
-        # Convert M-D format to invoice number and dates
-        month, day = date_part.split("-")
-        invoice_number = f"2025.{month.zfill(2)}.{day.zfill(2)}"
-        invoice_date = f"{month.zfill(2)}/{day.zfill(2)}/2025"
-        # Due date is 30 days later (simplified)
-        due_month = int(month) + 1 if int(month) < 12 else 1
-        due_year = 2025 if int(month) < 12 else 2026
-        due_date = f"{due_month:02d}/{day.zfill(2)}/{due_year}"
-    else:
-        invoice_number = "2025.XX.XX"
-        invoice_date = "XX/XX/2025"
-        due_date = "XX/XX/2025"
+    try:
+        base_name = os.path.splitext(os.path.basename(invoice_data_file))[0]
+        if base_name.startswith("invoice-data-"):
+            date_part = base_name.replace("invoice-data-", "")
+            try:
+                # Convert M-D format to invoice number and dates
+                month, day = date_part.split("-")
+                invoice_number = f"2025.{month.zfill(2)}.{day.zfill(2)}"
+                invoice_date = f"{month.zfill(2)}/{day.zfill(2)}/2025"
+                # Calculate due date 30 days out
+                due_date = calculate_due_date(invoice_date, 30)
+            except ValueError as e:
+                raise ValueError(f"Invalid filename format: {invoice_data_file}. Expected format: invoice-data-M-D.txt") from e
+        else:
+            # Fallback to current date
+            now = datetime.now()
+            invoice_number = f"2025.{now.month:02d}.{now.day:02d}"
+            invoice_date = now.strftime("%m/%d/%Y")
+            due_date = calculate_due_date(invoice_date, 30)
 
-    return {
-        "invoice_number": invoice_number,
-        "invoice_date": invoice_date,
-        "due_date": due_date,
-    }
+        return {
+            "invoice_number": invoice_number,
+            "invoice_date": invoice_date,
+            "due_date": due_date,
+        }
+    except ValueError as e:
+        raise ValueError(f"Error generating invoice metadata: {e}") from e
 
 
 def generate_invoice_files(data, output_dir="."):
@@ -163,31 +220,38 @@ def generate_invoice_files(data, output_dir="."):
 
 def legacy_main(client_file, invoice_data_file, output_dir):
     """Legacy main function for backward compatibility."""
-    # Initialize database
-    db = InvoiceDB()
-    
-    # Load data using helper functions
-    client_data = load_client_data(client_file)
-    items = load_invoice_items(invoice_data_file)
-    invoice_metadata = generate_invoice_metadata(invoice_data_file)
+    try:
+        # Initialize database
+        db = InvoiceDB()
+        
+        # Load data using helper functions
+        client_data = load_client_data(client_file)
+        items = load_invoice_items(invoice_data_file)
+        invoice_metadata = generate_invoice_metadata(invoice_data_file)
 
-    # Import customer to database
-    customer_id = db.import_customer_from_json(client_data)
-    
-    # Import invoice to database
-    invoice_id = db.import_invoice_from_files(customer_id, invoice_data_file, items)
+        # Import customer to database
+        customer_id = db.import_customer_from_json(client_data)
+        
+        # Import invoice to database
+        invoice_id = db.import_invoice_from_files(customer_id, invoice_data_file, items)
 
-    # Combine all data
-    data = {
-        **COMPANY_DATA,
-        **client_data,
-        **invoice_metadata,
-        "items": items,
-        "total": sum(item["quantity"] * item["rate"] for item in items),
-    }
+        # Combine all data
+        data = {
+            **COMPANY_DATA,
+            **client_data,
+            **invoice_metadata,
+            "items": items,
+            "total": sum(item["quantity"] * item["rate"] for item in items),
+        }
 
-    # Generate output files
-    generate_invoice_files(data, output_dir)
+        # Generate output files
+        generate_invoice_files(data, output_dir)
+    except (ValueError, FileNotFoundError, IOError) as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        sys.exit(1)
 
 
 def cmd_import_items(args):
@@ -282,30 +346,31 @@ def cmd_list_invoices(args):
         print(f"{invoice['id']:2d} | {invoice['invoice_number']} | {invoice['customer_name']:<15} | {invoice['invoice_date']} | ${invoice['total_amount']:.2f}")
 
 
+def cmd_one_shot(args):
+    """One-shot command for legacy compatibility - import customer and invoice data, then generate files."""
+    legacy_main(args.client_file, args.invoice_data_file, args.output_dir)
+
+
 def main():
     """Main function with enhanced CLI support."""
     parser = argparse.ArgumentParser(
         description="Generate HTML and PDF invoices with SQLite database support"
     )
     
-    # Check if we're in legacy mode (two positional arguments)
-    if len(sys.argv) >= 3 and not sys.argv[1].startswith('-') and not sys.argv[2].startswith('-'):
-        # Legacy mode: python generate_invoice.py client.json invoice-data.txt
-        parser.add_argument("client_file", help="Path to client JSON file")
-        parser.add_argument("invoice_data_file", help="Path to invoice data text file")
-        parser.add_argument(
-            "--output-dir",
-            "-o",
-            default=".",
-            help="Output directory for generated files (default: current directory)",
-        )
-        
-        args = parser.parse_args()
-        legacy_main(args.client_file, args.invoice_data_file, args.output_dir)
-        return
-    
-    # New CLI mode with subcommands
+    # CLI mode with subcommands
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    
+    # one-shot command (replaces legacy mode)
+    parser_one_shot = subparsers.add_parser("one-shot", help="One-shot invoice generation (legacy compatibility)")
+    parser_one_shot.add_argument("client_file", help="Path to client JSON file")
+    parser_one_shot.add_argument("invoice_data_file", help="Path to invoice data text file")
+    parser_one_shot.add_argument(
+        "--output-dir",
+        "-o",
+        default=".",
+        help="Output directory for generated files (default: current directory)",
+    )
+    parser_one_shot.set_defaults(func=cmd_one_shot)
     
     # import-items command
     parser_import_items = subparsers.add_parser("import-items", help="Import invoice items from TSV file")

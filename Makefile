@@ -9,7 +9,7 @@ MAKEFLAGS += --no-builtin-rules
 # ---------------------- COMMANDS ---------------------------
 generate: # Generate invoice HTML from template (usage: make generate CLIENT=acme-corp DATA=invoice-data-3-31)
 	@echo "Generating invoice.."
-	uv run python generate_invoice.py $(CLIENT).json $(DATA).txt
+	uv run python generate_invoice.py one-shot $(CLIENT).json $(DATA).txt
 	@echo "Done."
 
 update: # Update dependencies
