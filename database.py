@@ -121,6 +121,18 @@ class InvoiceDB:
         self.db_path = db_path
         self.init_database()
 
+    def _create_invoice_details_from_metadata(
+        self, metadata: Dict[str, str], customer_id: int, total_amount: float
+    ) -> InvoiceDetails:
+        """Create InvoiceDetails from metadata dict and additional parameters."""
+        return InvoiceDetails(
+            invoice_number=metadata["invoice_number"],
+            customer_id=customer_id,
+            invoice_date=metadata["invoice_date"],
+            due_date=metadata["due_date"],
+            total_amount=total_amount,
+        )
+
     def init_database(self):
         """Initialize database schema and pre-populate vendor data."""
         with sqlite3.connect(self.db_path) as conn:
@@ -421,12 +433,6 @@ class InvoiceDB:
         """Import invoice from TSV file data."""
 
         try:
-            # Generate invoice metadata from filename
-            metadata = generate_invoice_metadata_from_filename(invoice_data_file)
-            invoice_number = metadata["invoice_number"]
-            invoice_date = metadata["invoice_date"]
-            due_date = metadata["due_date"]
-
             # Validate and calculate total
             total_amount = 0.0
             for item in items:
@@ -439,13 +445,10 @@ class InvoiceDB:
                     raise ValueError(f"Invalid rate for item: {item}")
                 total_amount += item["quantity"] * item["rate"]
 
-            # Create invoice
-            details = InvoiceDetails(
-                invoice_number=invoice_number,
-                customer_id=customer_id,
-                invoice_date=invoice_date,
-                due_date=due_date,
-                total_amount=total_amount,
+            # Generate invoice details and create invoice
+            metadata = generate_invoice_metadata_from_filename(invoice_data_file)
+            details = self._create_invoice_details_from_metadata(
+                metadata, customer_id, total_amount
             )
             invoice_id = self.create_invoice(details)
 
