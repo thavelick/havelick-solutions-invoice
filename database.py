@@ -83,7 +83,6 @@ class InvoiceDB:
                     id INTEGER PRIMARY KEY,
                     name TEXT NOT NULL,
                     address TEXT NOT NULL,
-                    payment_terms TEXT DEFAULT 'Net 30 days',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -128,14 +127,14 @@ class InvoiceDB:
             
             conn.commit()
     
-    def create_customer(self, name: str, address: str, payment_terms: str = "Net 30 days") -> int:
+    def create_customer(self, name: str, address: str) -> int:
         """Create a new customer and return the customer ID."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO customers (name, address, payment_terms)
-                VALUES (?, ?, ?)
-            """, (name, address, payment_terms))
+                INSERT INTO customers (name, address)
+                VALUES (?, ?)
+            """, (name, address))
             return cursor.lastrowid
     
     def get_customer_by_name(self, name: str) -> Optional[Dict[str, Any]]:
@@ -143,7 +142,7 @@ class InvoiceDB:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, name, address, payment_terms
+                SELECT id, name, address
                 FROM customers WHERE name = ?
             """, (name,))
             row = cursor.fetchone()
@@ -151,12 +150,11 @@ class InvoiceDB:
                 return {
                     "id": row[0],
                     "name": row[1],
-                    "address": row[2],
-                    "payment_terms": row[3]
+                    "address": row[2]
                 }
         return None
     
-    def upsert_customer(self, name: str, address: str, payment_terms: str = "Net 30 days") -> int:
+    def upsert_customer(self, name: str, address: str) -> int:
         """Insert or update customer, return customer ID."""
         customer = self.get_customer_by_name(name)
         if customer:
@@ -165,37 +163,35 @@ class InvoiceDB:
                 cursor = conn.cursor()
                 cursor.execute("""
                     UPDATE customers 
-                    SET address = ?, payment_terms = ?
+                    SET address = ?
                     WHERE id = ?
-                """, (address, payment_terms, customer["id"]))
+                """, (address, customer["id"]))
             return customer["id"]
         else:
             # Create new customer
-            return self.create_customer(name, address, payment_terms)
+            return self.create_customer(name, address)
     
     def import_customer_from_json(self, json_data: Dict[str, Any]) -> int:
         """Import customer from JSON data structure."""
         client_data = json_data.get("client", {})
         name = client_data.get("name", "")
         address = client_data.get("address", "")
-        payment_terms = json_data.get("payment_terms", "Net 30 days")
         
-        return self.upsert_customer(name, address, payment_terms)
+        return self.upsert_customer(name, address)
     
     def list_customers(self) -> List[Dict[str, Any]]:
         """List all customers."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, name, address, payment_terms
+                SELECT id, name, address
                 FROM customers ORDER BY name
             """)
             return [
                 {
                     "id": row[0],
                     "name": row[1],
-                    "address": row[2],
-                    "payment_terms": row[3]
+                    "address": row[2]
                 }
                 for row in cursor.fetchall()
             ]
@@ -232,7 +228,6 @@ class InvoiceDB:
             cursor.execute("""
                 SELECT i.invoice_number, i.invoice_date, i.due_date, i.total_amount,
                        c.name as customer_name, c.address as customer_address, 
-                       c.payment_terms,
                        v.name as vendor_name, v.address as vendor_address,
                        v.email as vendor_email, v.phone as vendor_phone
                 FROM invoices i
@@ -270,16 +265,16 @@ class InvoiceDB:
                 "due_date": invoice_row[2],
                 "total": invoice_row[3],
                 "company": {
-                    "name": invoice_row[7],
-                    "address": invoice_row[8],
-                    "email": invoice_row[9],
-                    "phone": invoice_row[10]
+                    "name": invoice_row[6],
+                    "address": invoice_row[7],
+                    "email": invoice_row[8],
+                    "phone": invoice_row[9]
                 },
                 "client": {
                     "name": invoice_row[4],
                     "address": invoice_row[5]
                 },
-                "payment_terms": invoice_row[6],
+                "payment_terms": "Net 30 days",
                 "items": items
             }
     

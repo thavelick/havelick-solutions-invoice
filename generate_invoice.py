@@ -291,7 +291,7 @@ def cmd_create_customer(args):
     """Create a new customer."""
     db = InvoiceDB()
     
-    customer_id = db.create_customer(args.name, args.address, args.payment_terms)
+    customer_id = db.create_customer(args.name, args.address)
     print(f"Created customer: {args.name} (ID: {customer_id})")
 
 
@@ -321,11 +321,11 @@ def cmd_list_customers(args):
         return
     
     print("Customers:")
-    print("ID | Name | Payment Terms")
-    print("-" * 40)
+    print("ID | Name")
+    print("-" * 30)
     
     for customer in customers:
-        print(f"{customer['id']:2d} | {customer['name']:<20} | {customer['payment_terms']}")
+        print(f"{customer['id']:2d} | {customer['name']}")
 
 
 def cmd_list_invoices(args):
@@ -387,7 +387,6 @@ def main():
     parser_create_customer = subparsers.add_parser("create-customer", help="Create a new customer")
     parser_create_customer.add_argument("name", help="Customer name")
     parser_create_customer.add_argument("address", help="Customer address")
-    parser_create_customer.add_argument("--payment-terms", default="Net 30 days", help="Payment terms (default: Net 30 days)")
     parser_create_customer.set_defaults(func=cmd_create_customer)
     
     # generate-invoice command
