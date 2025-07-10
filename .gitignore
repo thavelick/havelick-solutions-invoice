@@ -6,6 +6,7 @@ invoice.html
 *-invoice-*.html
 *-invoice-*.pdf
 invoice-data-*.txt
+!invoice-data-3-31.txt
 *-vision.json
 client-*.json
 

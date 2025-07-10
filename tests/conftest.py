@@ -19,9 +19,10 @@ def playwright_config():
 def test_data_files():
     """Provide paths to test data files."""
     test_dir = Path(__file__).parent
+    project_root = test_dir.parent
     return {
         "client": test_dir / "test-client.json",
-        "invoice_data": test_dir / "invoice-data-3-15.txt",
+        "invoice_data": project_root / "invoice-data-3-31.txt",
     }
 
 
@@ -64,8 +65,8 @@ def invoice_generator():
         )
 
         # Calculate expected filenames
-        # For test data: Acme Corp, invoice date 03/15/2025
-        base_filename = calculate_expected_filename("Acme Corp", "03/15/2025")
+        # For test data: Acme Corp, invoice date from filename: 03/31/2025
+        base_filename = calculate_expected_filename("Acme Corp", "03/31/2025")
         expected_html = output_dir / f"{base_filename}.html"
         expected_pdf = output_dir / f"{base_filename}.pdf"
 
