@@ -19,5 +19,6 @@ dev = [
     "pylint>=3.3.7",
     "pyright>=1.1.402",
     "pytest>=8.4.1",
+    "pytest-cov>=6.0.0",
     "pytest-playwright>=0.7.0",
 ]
