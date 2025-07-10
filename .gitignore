@@ -9,6 +9,10 @@ invoice-data-*.txt
 *-vision.json
 client-*.json
 
+# Database files
+invoices.db
+*.db
+
 # Python
 __pycache__/
 *.py[cod]

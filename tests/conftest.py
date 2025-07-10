@@ -40,13 +40,19 @@ def invoice_generator():
 
     def _generate(client_file, invoice_data_file, output_dir):
         """Generate invoice and return subprocess result and expected file paths."""
-        # Run invoice generation with output directory
+        # Create temporary database file for this test
+        test_db = output_dir / "test_invoices.db"
+
+        # Run invoice generation with output directory using one-shot command
         result = subprocess.run(
             [
                 "uv",
                 "run",
                 "python",
                 "generate_invoice.py",
+                "--db-path",
+                str(test_db),
+                "one-shot",
                 str(client_file),
                 str(invoice_data_file),
                 "--output-dir",
