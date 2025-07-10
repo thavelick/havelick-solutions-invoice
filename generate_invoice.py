@@ -9,16 +9,13 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timedelta
-from typing import Any, Dict, List
 
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
 from database import (
     InvoiceDB,
-    calculate_due_date,
-    parse_date_safely,
+    generate_invoice_metadata_from_filename,
     parse_date_to_display,
     validate_amount,
 )
@@ -162,32 +159,7 @@ def load_invoice_items(filepath):
 def generate_invoice_metadata(invoice_data_file):
     """Generate invoice number and dates from filename."""
     try:
-        base_name = os.path.splitext(os.path.basename(invoice_data_file))[0]
-        if base_name.startswith("invoice-data-"):
-            date_part = base_name.replace("invoice-data-", "")
-            try:
-                # Convert M-D format to invoice number and dates
-                month, day = date_part.split("-")
-                invoice_number = f"2025.{month.zfill(2)}.{day.zfill(2)}"
-                invoice_date = f"{month.zfill(2)}/{day.zfill(2)}/2025"
-                # Calculate due date 30 days out
-                due_date = calculate_due_date(invoice_date, 30)
-            except ValueError as e:
-                raise ValueError(
-                    f"Invalid filename format: {invoice_data_file}. Expected format: invoice-data-M-D.txt"
-                ) from e
-        else:
-            # Fallback to current date
-            now = datetime.now()
-            invoice_number = f"2025.{now.month:02d}.{now.day:02d}"
-            invoice_date = now.strftime("%m/%d/%Y")
-            due_date = calculate_due_date(invoice_date, 30)
-
-        return {
-            "invoice_number": invoice_number,
-            "invoice_date": invoice_date,
-            "due_date": due_date,
-        }
+        return generate_invoice_metadata_from_filename(invoice_data_file)
     except ValueError as e:
         raise ValueError(f"Error generating invoice metadata: {e}") from e
 
@@ -228,11 +200,11 @@ def generate_invoice_files(data, output_dir="."):
     )
 
 
-def legacy_main(client_file, invoice_data_file, output_dir):
+def legacy_main(client_file, invoice_data_file, output_dir, db_path="invoices.db"):
     """Legacy main function for backward compatibility."""
     try:
         # Initialize database
-        db = InvoiceDB()
+        db = InvoiceDB(db_path)
 
         # Load data using helper functions
         client_data = load_client_data(client_file)
@@ -243,7 +215,7 @@ def legacy_main(client_file, invoice_data_file, output_dir):
         customer_id = db.import_customer_from_json(client_data)
 
         # Import invoice to database
-        invoice_id = db.import_invoice_from_files(customer_id, invoice_data_file, items)
+        db.import_invoice_from_files(customer_id, invoice_data_file, items)
 
         # Combine all data
         data = {
@@ -259,14 +231,11 @@ def legacy_main(client_file, invoice_data_file, output_dir):
     except (ValueError, FileNotFoundError, IOError) as e:
         print(f"Error: {e}")
         sys.exit(1)
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        sys.exit(1)
 
 
 def cmd_import_items(args):
     """Import invoice items from TSV file."""
-    db = InvoiceDB()
+    db = InvoiceDB(args.db_path)
 
     # Load and parse items
     items = load_invoice_items(args.file)
@@ -285,7 +254,7 @@ def cmd_import_items(args):
 
 def cmd_import_customer(args):
     """Import customer from JSON file."""
-    db = InvoiceDB()
+    db = InvoiceDB(args.db_path)
 
     # Load customer data
     client_data = load_client_data(args.file)
@@ -294,12 +263,14 @@ def cmd_import_customer(args):
     customer_id = db.import_customer_from_json(client_data)
 
     customer = db.get_customer_by_name(client_data["client"]["name"])
+    if customer is None:
+        raise ValueError(f"Failed to find customer: {client_data['client']['name']}")
     print(f"Imported customer: {customer['name']} (ID: {customer_id})")
 
 
 def cmd_create_customer(args):
     """Create a new customer."""
-    db = InvoiceDB()
+    db = InvoiceDB(args.db_path)
 
     customer_id = db.create_customer(args.name, args.address)
     print(f"Created customer: {args.name} (ID: {customer_id})")
@@ -307,7 +278,7 @@ def cmd_create_customer(args):
 
 def cmd_generate_invoice(args):
     """Generate invoice from database."""
-    db = InvoiceDB()
+    db = InvoiceDB(args.db_path)
 
     # Get invoice data from database
     invoice_data = db.get_invoice_data(args.invoice_id)
@@ -322,7 +293,7 @@ def cmd_generate_invoice(args):
 
 def cmd_list_customers(args):
     """List all customers."""
-    db = InvoiceDB()
+    db = InvoiceDB(args.db_path)
 
     customers = db.list_customers()
 
@@ -340,7 +311,7 @@ def cmd_list_customers(args):
 
 def cmd_list_invoices(args):
     """List invoices."""
-    db = InvoiceDB()
+    db = InvoiceDB(args.db_path)
 
     invoices = db.list_invoices(args.customer_id)
 
@@ -354,19 +325,28 @@ def cmd_list_invoices(args):
 
     for invoice in invoices:
         print(
-            f"{invoice['id']:2d} | {invoice['invoice_number']} | {invoice['customer_name']:<15} | {invoice['invoice_date']} | ${invoice['total_amount']:.2f}"
+            f"{invoice['id']:2d} | {invoice['invoice_number']} | "
+            f"{invoice['customer_name']:<15} | {invoice['invoice_date']} | "
+            f"${invoice['total_amount']:.2f}"
         )
 
 
 def cmd_one_shot(args):
-    """One-shot command for legacy compatibility - import customer and invoice data, then generate files."""
-    legacy_main(args.client_file, args.invoice_data_file, args.output_dir)
+    """One-shot command for legacy compatibility."""
+    legacy_main(args.client_file, args.invoice_data_file, args.output_dir, args.db_path)
 
 
 def main():
     """Main function with enhanced CLI support."""
     parser = argparse.ArgumentParser(
         description="Generate HTML and PDF invoices with SQLite database support"
+    )
+
+    # Global arguments
+    parser.add_argument(
+        "--db-path",
+        default="invoices.db",
+        help="Path to SQLite database file (default: invoices.db)",
     )
 
     # CLI mode with subcommands

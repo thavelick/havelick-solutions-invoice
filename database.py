@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Database operations for invoice management system."""
 
-import json
 import os
 import sqlite3
 from datetime import datetime, timedelta
@@ -54,6 +53,40 @@ def calculate_due_date(invoice_date_str: str, days_out: int = 30) -> str:
         return due_date.strftime("%m/%d/%Y")
     except ValueError as e:
         raise ValueError(f"Invalid invoice date format: {invoice_date_str}") from e
+
+
+def generate_invoice_metadata_from_filename(invoice_data_file: str) -> Dict[str, str]:
+    """Generate invoice number and dates from filename."""
+    try:
+        # Generate invoice metadata from filename
+        base_name = os.path.splitext(os.path.basename(invoice_data_file))[0]
+        if base_name.startswith("invoice-data-"):
+            date_part = base_name.replace("invoice-data-", "")
+            try:
+                month, day = date_part.split("-")
+                invoice_number = f"2025.{month.zfill(2)}.{day.zfill(2)}"
+                invoice_date = f"{month.zfill(2)}/{day.zfill(2)}/2025"
+                # Calculate due date 30 days out
+                due_date = calculate_due_date(invoice_date, 30)
+            except ValueError as e:
+                raise ValueError(
+                    f"Invalid filename format: {invoice_data_file}. "
+                    f"Expected format: invoice-data-M-D.txt"
+                ) from e
+        else:
+            # Fallback to current date
+            now = datetime.now()
+            invoice_number = f"2025.{now.month:02d}.{now.day:02d}"
+            invoice_date = now.strftime("%m/%d/%Y")
+            due_date = calculate_due_date(invoice_date, 30)
+
+        return {
+            "invoice_number": invoice_number,
+            "invoice_date": invoice_date,
+            "due_date": due_date,
+        }
+    except (ValueError, IndexError) as e:
+        raise ValueError(f"Error generating invoice metadata: {e}") from e
 
 
 class InvoiceDB:
@@ -152,7 +185,10 @@ class InvoiceDB:
             """,
                 (name, address),
             )
-            return cursor.lastrowid
+            customer_id = cursor.lastrowid
+            if customer_id is None:
+                raise ValueError("Failed to create customer")
+            return customer_id
 
     def get_customer_by_name(self, name: str) -> Optional[Dict[str, Any]]:
         """Get customer by name."""
@@ -186,9 +222,8 @@ class InvoiceDB:
                     (address, customer["id"]),
                 )
             return customer["id"]
-        else:
-            # Create new customer
-            return self.create_customer(name, address)
+        # Create new customer
+        return self.create_customer(name, address)
 
     def import_customer_from_json(self, json_data: Dict[str, Any]) -> int:
         """Import customer from JSON data structure."""
@@ -239,7 +274,10 @@ class InvoiceDB:
                     total_amount,
                 ),
             )
-            return cursor.lastrowid
+            invoice_id = cursor.lastrowid
+            if invoice_id is None:
+                raise ValueError("Failed to create invoice")
+            return invoice_id
 
     def add_invoice_item(
         self,
@@ -368,25 +406,10 @@ class InvoiceDB:
 
         try:
             # Generate invoice metadata from filename
-            base_name = os.path.splitext(os.path.basename(invoice_data_file))[0]
-            if base_name.startswith("invoice-data-"):
-                date_part = base_name.replace("invoice-data-", "")
-                try:
-                    month, day = date_part.split("-")
-                    invoice_number = f"2025.{month.zfill(2)}.{day.zfill(2)}"
-                    invoice_date = f"{month.zfill(2)}/{day.zfill(2)}/2025"
-                    # Calculate due date 30 days out
-                    due_date = calculate_due_date(invoice_date, 30)
-                except ValueError as e:
-                    raise ValueError(
-                        f"Invalid filename format: {invoice_data_file}. Expected format: invoice-data-M-D.txt"
-                    ) from e
-            else:
-                # Fallback to current date
-                now = datetime.now()
-                invoice_number = f"2025.{now.month:02d}.{now.day:02d}"
-                invoice_date = now.strftime("%m/%d/%Y")
-                due_date = calculate_due_date(invoice_date, 30)
+            metadata = generate_invoice_metadata_from_filename(invoice_data_file)
+            invoice_number = metadata["invoice_number"]
+            invoice_date = metadata["invoice_date"]
+            due_date = metadata["due_date"]
 
             # Validate and calculate total
             total_amount = 0.0
