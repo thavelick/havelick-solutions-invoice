@@ -71,25 +71,18 @@ reset := $(shell tput sgr0)
 
 help:
 	@printf '\n'
-	@printf '    $(underline)$(grey500)Available make commands:$(reset)\n\n'
-	@# Print non-check commands with comments
+	@printf '    $(underline)Available make commands:$(reset)\n\n'
+	@# Print commands with comments
 	@grep -E '^([a-zA-Z0-9_-]+\.?)+:.+#.+$$' $(MAKEFILE_LIST) \
-		| grep -v '^check-' \
 		| grep -v '^env-' \
 		| grep -v '^arg-' \
 		| sed 's/:.*#/: #/g' \
 		| awk 'BEGIN {FS = "[: ]+#[ ]+"}; \
-		{printf " $(grey300)   make $(reset)$(cyan80)$(bold)$(TAB) $(reset)$(grey300)# %s$(reset)\n", \
+		{printf "    make $(bold)$(TAB)$(reset) # %s\n", \
 			$$1, $$2}'
 	@grep -E '^([a-zA-Z0-9_-]+\.?)+:( +\w+-\w+)*$$' $(MAKEFILE_LIST) \
 		| grep -v help \
 		| awk 'BEGIN {FS = ":"}; \
-		{printf " $(grey300)   make $(reset)$(cyan80)$(bold)$(TAB)$(reset)\n", \
-			$$1}'
-	@echo -e "\n    $(underline)$(grey500)Helper/Checks$(reset)\n"
-	@grep -E '^([a-zA-Z0-9_-]+\.?)+:.+#.+$$' $(MAKEFILE_LIST) \
-		| grep -E '^(check|arg|env)-' \
-		| awk 'BEGIN {FS = "[: ]+#[ ]+"}; \
-		{printf " $(grey300)   make $(reset)$(grey500)$(TAB) $(reset)$(grey300)# %s$(reset)\n", \
-			$$1, $$2}'
+		{printf "    make $(bold)$(TAB)$(reset)\n", \
+			$$1}' || true
 	@echo -e ""
