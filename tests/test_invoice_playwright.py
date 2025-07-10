@@ -27,5 +27,5 @@ def test_invoice_generation_and_content(
 
     assert "acme corp" in page_content, "Client name not found in generated invoice"
     assert (
-        "website development" in page_content
+        "software development work" in page_content
     ), "Invoice item not found in generated invoice"
