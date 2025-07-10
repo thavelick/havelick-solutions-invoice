@@ -3,11 +3,35 @@
 
 import os
 import sqlite3
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 # Constants
 HAVELICK_SOLUTIONS_VENDOR_ID = 1
+
+
+@dataclass
+class InvoiceDetails:
+    """Details needed to create an invoice."""
+
+    invoice_number: str
+    customer_id: int
+    invoice_date: str
+    due_date: str
+    total_amount: float
+
+
+@dataclass
+class LineItem:
+    """Details for an invoice line item."""
+
+    invoice_id: int
+    work_date: str
+    description: str
+    quantity: float
+    rate: float
+    amount: float
 
 
 def parse_date_safely(date_str: str, date_format: str = "%m/%d/%Y") -> str:
@@ -248,14 +272,7 @@ class InvoiceDB:
                 for row in cursor.fetchall()
             ]
 
-    def create_invoice(
-        self,
-        invoice_number: str,
-        customer_id: int,
-        invoice_date: str,
-        due_date: str,
-        total_amount: float,
-    ) -> int:
+    def create_invoice(self, details: InvoiceDetails) -> int:
         """Create a new invoice and return the invoice ID."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -266,12 +283,12 @@ class InvoiceDB:
                 VALUES (?, ?, ?, ?, ?, ?)
             """,
                 (
-                    invoice_number,
-                    customer_id,
+                    details.invoice_number,
+                    details.customer_id,
                     HAVELICK_SOLUTIONS_VENDOR_ID,
-                    invoice_date,
-                    due_date,
-                    total_amount,
+                    details.invoice_date,
+                    details.due_date,
+                    details.total_amount,
                 ),
             )
             invoice_id = cursor.lastrowid
@@ -279,15 +296,7 @@ class InvoiceDB:
                 raise ValueError("Failed to create invoice")
             return invoice_id
 
-    def add_invoice_item(
-        self,
-        invoice_id: int,
-        work_date: str,
-        description: str,
-        quantity: float,
-        rate: float,
-        amount: float,
-    ):
+    def add_invoice_item(self, item: LineItem):
         """Add an item to an invoice."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -297,7 +306,14 @@ class InvoiceDB:
                                          quantity, rate, amount)
                 VALUES (?, ?, ?, ?, ?, ?)
             """,
-                (invoice_id, work_date, description, quantity, rate, amount),
+                (
+                    item.invoice_id,
+                    item.work_date,
+                    item.description,
+                    item.quantity,
+                    item.rate,
+                    item.amount,
+                ),
             )
 
     def get_invoice_data(self, invoice_id: int) -> Optional[Dict[str, Any]]:
@@ -424,9 +440,14 @@ class InvoiceDB:
                 total_amount += item["quantity"] * item["rate"]
 
             # Create invoice
-            invoice_id = self.create_invoice(
-                invoice_number, customer_id, invoice_date, due_date, total_amount
+            details = InvoiceDetails(
+                invoice_number=invoice_number,
+                customer_id=customer_id,
+                invoice_date=invoice_date,
+                due_date=due_date,
+                total_amount=total_amount,
             )
+            invoice_id = self.create_invoice(details)
 
             # Add items
             for item in items:
@@ -434,14 +455,15 @@ class InvoiceDB:
                 work_date = parse_date_safely(item["date"], "%m/%d/%Y")
 
                 amount = item["quantity"] * item["rate"]
-                self.add_invoice_item(
-                    invoice_id,
-                    work_date,
-                    item["description"],
-                    item["quantity"],
-                    item["rate"],
-                    amount,
+                line_item = LineItem(
+                    invoice_id=invoice_id,
+                    work_date=work_date,
+                    description=item["description"],
+                    quantity=item["quantity"],
+                    rate=item["rate"],
+                    amount=amount,
                 )
+                self.add_invoice_item(line_item)
 
             return invoice_id
 
