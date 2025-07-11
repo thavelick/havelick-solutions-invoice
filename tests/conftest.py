@@ -1,6 +1,9 @@
 """Pytest configuration and fixtures for invoice generator tests."""
 
+import json
+import os
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -73,3 +76,75 @@ def invoice_generator():
         return result, expected_html, expected_pdf
 
     return _generate
+
+
+# Unit test fixtures
+
+@pytest.fixture
+def sample_client_data():
+    """Provide sample client data for testing."""
+    return {
+        "client": {
+            "name": "Test Company Inc",
+            "address": "123 Test Street\nTest City, TS 12345"
+        }
+    }
+
+
+@pytest.fixture
+def sample_invoice_items():
+    """Provide sample invoice items for testing."""
+    return [
+        {
+            "date": "03/15/2025",
+            "description": "Software development work",
+            "quantity": 2.0,
+            "rate": 125.0
+        },
+        {
+            "date": "03/16/2025", 
+            "description": "Code review and testing",
+            "quantity": 1.5,
+            "rate": 100.0
+        }
+    ]
+
+
+@pytest.fixture
+def temp_client_file(sample_client_data):
+    """Create a temporary client JSON file for testing."""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        json.dump(sample_client_data, f)
+        filename = f.name
+    
+    yield filename
+    
+    # Cleanup
+    if os.path.exists(filename):
+        os.unlink(filename)
+
+
+@pytest.fixture
+def temp_invoice_data_file(sample_invoice_items):
+    """Create a temporary invoice data file for testing."""
+    content = "Date\tHours\tAmount\tDescription\n"
+    for item in sample_invoice_items:
+        amount = item["quantity"] * item["rate"]
+        content += f"{item['date']}\t{item['quantity']}\t{amount:.2f}\t{item['description']}\n"
+    
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        f.write(content)
+        filename = f.name
+    
+    yield filename
+    
+    # Cleanup
+    if os.path.exists(filename):
+        os.unlink(filename)
+
+
+@pytest.fixture
+def temp_dir():
+    """Create a temporary directory for testing."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        yield temp_dir

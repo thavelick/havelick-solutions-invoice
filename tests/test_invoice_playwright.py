@@ -1,8 +1,10 @@
 """Playwright tests for invoice generator."""
 
+import pytest
 from playwright.sync_api import Page
 
 
+@pytest.mark.integration
 def test_invoice_generation_and_content(
     tmp_path, test_data_files, invoice_generator, page: Page
 ):

@@ -14,6 +14,11 @@ client-*.json
 invoices.db
 *.db
 
+# Test coverage reports
+htmlcov/
+.coverage
+coverage.xml
+
 # Python
 __pycache__/
 *.py[cod]
@@ -59,3 +64,4 @@ Thumbs.db
 
 # Claude Code
 .claude/
+output.txt
