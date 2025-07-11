@@ -2,7 +2,7 @@
 
 import pytest
 
-from application.models import validate_amount, parse_date_safely, parse_date_to_display, generate_invoice_metadata_from_filename, calculate_due_date
+from application.models import validate_amount, parse_date_safely, parse_date_to_display, generate_invoice_metadata_from_filename, calculate_due_date, Vendor, Customer, Invoice, InvoiceItem
 
 
 class TestValidateAmount:

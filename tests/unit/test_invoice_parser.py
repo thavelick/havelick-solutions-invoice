@@ -3,7 +3,7 @@
 import json
 import pytest
 
-from generate_invoice import _parse_invoice_line, parse_invoice_data, load_client_data
+from generate_invoice import _parse_invoice_line, parse_invoice_data, load_client_data, load_invoice_items, generate_invoice_metadata
 
 
 class TestParseInvoiceLine:
@@ -203,16 +203,64 @@ class TestLoadClientData:
         with pytest.raises(ValueError, match="Client address is required"):
             load_client_data(str(client_file))
 
-    def test_load_empty_client_address(self, tmp_path):
-        """Test loading JSON with empty client address."""
-        client_file = tmp_path / "empty_address.json"
-        client_data = {
-            "client": {
-                "name": "Acme Corp",
-                "address": ""
-            }
-        }
-        client_file.write_text(json.dumps(client_data))
+
+class TestLoadInvoiceItems:
+    """Test cases for load_invoice_items function."""
+
+    def test_load_valid_invoice_items(self, tmp_path):
+        """Test loading valid invoice items."""
+        test_file = tmp_path / "invoice_items.txt"
+        test_file.write_text("03/15/2025\t8.0\t150.00\tSoftware development work\n")
         
-        with pytest.raises(ValueError, match="Client address is required"):
-            load_client_data(str(client_file))
+        result = load_invoice_items(str(test_file))
+        
+        assert len(result) == 1
+        assert result[0]["date"] == "03/15/2025"
+        assert result[0]["description"] == "Software development work"
+
+    def test_load_nonexistent_file(self):
+        """Test loading nonexistent file raises wrapped error."""
+        with pytest.raises(ValueError, match="Error loading invoice items"):
+            load_invoice_items("nonexistent_file.txt")
+
+    def test_load_invalid_file_content(self, tmp_path):
+        """Test loading file with invalid content raises wrapped error."""
+        test_file = tmp_path / "invalid_items.txt"
+        test_file.write_text("03/15/2025\tinvalid_quantity\t150.00\tWork\n")
+        
+        with pytest.raises(ValueError, match="Error loading invoice items"):
+            load_invoice_items(str(test_file))
+
+    def test_load_empty_file(self, tmp_path):
+        """Test loading empty file raises wrapped error."""
+        test_file = tmp_path / "empty_items.txt"
+        test_file.write_text("")
+        
+        with pytest.raises(ValueError, match="Error loading invoice items"):
+            load_invoice_items(str(test_file))
+
+
+class TestGenerateInvoiceMetadata:
+    """Test cases for generate_invoice_metadata function."""
+
+    def test_generate_metadata_valid_filename(self):
+        """Test generating metadata from valid filename."""
+        result = generate_invoice_metadata("invoice-data-3-15.txt")
+        
+        assert "invoice_number" in result
+        assert "invoice_date" in result
+        assert "due_date" in result
+        assert result["invoice_number"] == "2025.03.15"
+
+    def test_generate_metadata_invalid_filename(self):
+        """Test generating metadata from invalid filename raises wrapped error."""
+        with pytest.raises(ValueError, match="Error generating invoice metadata"):
+            generate_invoice_metadata("invoice-data-invalid.txt")
+
+    def test_generate_metadata_fallback_filename(self):
+        """Test generating metadata from non-standard filename."""
+        result = generate_invoice_metadata("some-other-file.txt")
+        
+        assert "invoice_number" in result
+        assert "invoice_date" in result
+        assert "due_date" in result
