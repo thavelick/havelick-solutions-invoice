@@ -1,9 +1,9 @@
 """Unit tests for invoice parsing functions."""
 
+import json
 import pytest
-from unittest.mock import patch, mock_open
 
-from generate_invoice import _parse_invoice_line, parse_invoice_data
+from generate_invoice import _parse_invoice_line, parse_invoice_data, load_client_data
 
 
 class TestParseInvoiceLine:
@@ -84,11 +84,12 @@ class TestParseInvoiceData:
         with pytest.raises(FileNotFoundError, match="Invoice data file not found"):
             parse_invoice_data("nonexistent_file.txt")
 
-    @patch("builtins.open", new_callable=mock_open, read_data="03/15/2025\t8.0\t150.00\tSoftware development work\n")
-    @patch("os.path.exists", return_value=True)
-    def test_parse_valid_file(self, mock_exists, mock_file):
+    def test_parse_valid_file(self, tmp_path):
         """Test parsing a valid invoice data file."""
-        result = parse_invoice_data("test_file.txt")
+        test_file = tmp_path / "test_file.txt"
+        test_file.write_text("03/15/2025\t8.0\t150.00\tSoftware development work\n")
+        
+        result = parse_invoice_data(str(test_file))
         
         assert len(result) == 1
         assert result[0]["date"] == "03/15/2025"
@@ -96,21 +97,122 @@ class TestParseInvoiceData:
         assert result[0]["quantity"] == 8.0
         assert result[0]["rate"] == 18.75
 
-    @patch("builtins.open", new_callable=mock_open, read_data="03/15/2025\t8.0\t150.00\tWork 1\n03/16/2025\t4.0\t200.00\tWork 2\n")
-    @patch("os.path.exists", return_value=True)
-    def test_parse_multiple_lines(self, mock_exists, mock_file):
+    def test_parse_multiple_lines(self, tmp_path):
         """Test parsing a file with multiple lines."""
-        result = parse_invoice_data("test_file.txt")
+        test_file = tmp_path / "test_file.txt"
+        test_file.write_text("03/15/2025\t8.0\t150.00\tWork 1\n03/16/2025\t4.0\t200.00\tWork 2\n")
+        
+        result = parse_invoice_data(str(test_file))
         
         assert len(result) == 2
         assert result[0]["description"] == "Work 1"
         assert result[1]["description"] == "Work 2"
 
-    @patch("builtins.open", new_callable=mock_open, read_data="03/15/2025\t8.0\t150.00\tValid work\n\n# Comment line\n")
-    @patch("os.path.exists", return_value=True)
-    def test_parse_file_with_empty_lines_and_comments(self, mock_exists, mock_file):
+    def test_parse_file_with_empty_lines_and_comments(self, tmp_path):
         """Test parsing a file with empty lines and comments."""
-        result = parse_invoice_data("test_file.txt")
+        test_file = tmp_path / "test_file.txt"
+        test_file.write_text("03/15/2025\t8.0\t150.00\tValid work\n\n# Comment line\n")
+        
+        result = parse_invoice_data(str(test_file))
         
         assert len(result) == 1
         assert result[0]["description"] == "Valid work"
+
+
+class TestLoadClientData:
+    """Test cases for load_client_data function."""
+
+    def test_load_nonexistent_file(self):
+        """Test loading a file that doesn't exist."""
+        with pytest.raises(FileNotFoundError, match="Client file not found"):
+            load_client_data("nonexistent_client.json")
+
+    def test_load_valid_client_data(self, tmp_path):
+        """Test loading valid client data."""
+        client_file = tmp_path / "client.json"
+        client_data = {
+            "client": {
+                "name": "Acme Corp",
+                "address": "123 Business St\nAnytown, CA 90210"
+            },
+            "payment_terms": "Net 30 days"
+        }
+        client_file.write_text(json.dumps(client_data))
+        
+        result = load_client_data(str(client_file))
+        
+        assert result == client_data
+        assert result["client"]["name"] == "Acme Corp"
+        assert result["client"]["address"] == "123 Business St\nAnytown, CA 90210"
+        assert result["payment_terms"] == "Net 30 days"
+
+    def test_load_invalid_json(self, tmp_path):
+        """Test loading file with invalid JSON."""
+        client_file = tmp_path / "invalid.json"
+        client_file.write_text("{invalid json")
+        
+        with pytest.raises(ValueError, match="Invalid JSON"):
+            load_client_data(str(client_file))
+
+    def test_load_missing_client_field(self, tmp_path):
+        """Test loading JSON missing required 'client' field."""
+        client_file = tmp_path / "missing_client.json"
+        client_data = {"payment_terms": "Net 30 days"}
+        client_file.write_text(json.dumps(client_data))
+        
+        with pytest.raises(ValueError, match="Client data missing 'client' field"):
+            load_client_data(str(client_file))
+
+    def test_load_missing_client_name(self, tmp_path):
+        """Test loading JSON with missing client name."""
+        client_file = tmp_path / "missing_name.json"
+        client_data = {
+            "client": {
+                "address": "123 Business St\nAnytown, CA 90210"
+            }
+        }
+        client_file.write_text(json.dumps(client_data))
+        
+        with pytest.raises(ValueError, match="Client name is required"):
+            load_client_data(str(client_file))
+
+    def test_load_empty_client_name(self, tmp_path):
+        """Test loading JSON with empty client name."""
+        client_file = tmp_path / "empty_name.json"
+        client_data = {
+            "client": {
+                "name": "",
+                "address": "123 Business St\nAnytown, CA 90210"
+            }
+        }
+        client_file.write_text(json.dumps(client_data))
+        
+        with pytest.raises(ValueError, match="Client name is required"):
+            load_client_data(str(client_file))
+
+    def test_load_missing_client_address(self, tmp_path):
+        """Test loading JSON with missing client address."""
+        client_file = tmp_path / "missing_address.json"
+        client_data = {
+            "client": {
+                "name": "Acme Corp"
+            }
+        }
+        client_file.write_text(json.dumps(client_data))
+        
+        with pytest.raises(ValueError, match="Client address is required"):
+            load_client_data(str(client_file))
+
+    def test_load_empty_client_address(self, tmp_path):
+        """Test loading JSON with empty client address."""
+        client_file = tmp_path / "empty_address.json"
+        client_data = {
+            "client": {
+                "name": "Acme Corp",
+                "address": ""
+            }
+        }
+        client_file.write_text(json.dumps(client_data))
+        
+        with pytest.raises(ValueError, match="Client address is required"):
+            load_client_data(str(client_file))
