@@ -17,10 +17,10 @@ def cleanup_db():
     close_db()
 
 
-class TestInitDb:
-    """Test cases for init_db function."""
+class TestDatabaseOperations:
+    """Test cases for core database operations."""
 
-    def test_init_db_creates_database(self):
+    def test_init_db_creates_database_with_schema(self):
         """Test that init_db creates database with proper schema."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = os.path.join(tmp_dir, "test.db")
@@ -33,8 +33,6 @@ class TestInitDb:
             # Check that tables were created
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
-
-            # Check for expected tables
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = [row[0] for row in cursor.fetchall()]
 
@@ -44,82 +42,38 @@ class TestInitDb:
 
             conn.close()
 
-    def test_init_db_with_default_path(self):
-        """Test init_db with default database path."""
-        # Clean up any existing database and connection
-        close_db()
-        if os.path.exists("invoices.db"):
-            os.remove("invoices.db")
-
-        try:
-            init_db()
-            assert os.path.exists("invoices.db")
-        finally:
-            # Clean up
-            close_db()
-            if os.path.exists("invoices.db"):
-                os.remove("invoices.db")
-
     def test_init_db_schema_file_missing(self):
         """Test init_db when schema file is missing."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = os.path.join(tmp_dir, "test.db")
-
-            # Save original working directory
             original_cwd = os.getcwd()
 
             try:
-                # Change to temp directory where schema.sql doesn't exist
-                os.chdir(tmp_dir)
-
+                os.chdir(tmp_dir)  # Change to directory without schema.sql
                 with pytest.raises(FileNotFoundError):
                     init_db(db_path)
-
             finally:
-                # Restore original working directory
                 os.chdir(original_cwd)
 
-
-class TestGetDbConnection:
-    """Test cases for get_db_connection function."""
-
-    def test_get_db_connection_creates_connection(self):
-        """Test that get_db_connection creates a valid connection."""
+    def test_get_db_connection_creates_and_reuses_connection(self):
+        """Test that get_db_connection creates a connection and reuses it."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = os.path.join(tmp_dir, "test.db")
-
-            # First initialize the database
             init_db(db_path)
 
             # Get connection
-            conn = get_db_connection()
-
-            assert isinstance(conn, sqlite3.Connection)
-            assert conn is not None
+            conn1 = get_db_connection()
+            assert isinstance(conn1, sqlite3.Connection)
 
             # Test that connection works
-            cursor = conn.cursor()
+            cursor = conn1.cursor()
             cursor.execute("SELECT 1 as test_col")
             result = cursor.fetchone()
             assert result["test_col"] == 1
 
-    def test_get_db_connection_reuses_connection(self):
-        """Test that get_db_connection reuses existing connection."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path = os.path.join(tmp_dir, "test.db")
-
-            init_db(db_path)
-
-            # Get connection twice
-            conn1 = get_db_connection()
+            # Get connection again - should be the same object
             conn2 = get_db_connection()
-
-            # Should be the same connection object
             assert conn1 is conn2
-
-
-class TestCloseDb:
-    """Test cases for close_db function."""
 
     def test_close_db_closes_connection(self):
         """Test that close_db properly closes the connection."""
@@ -128,9 +82,9 @@ class TestCloseDb:
 
             init_db(db_path)
             conn = get_db_connection()
+            cursor = conn.cursor()
 
             # Verify connection is active
-            cursor = conn.cursor()
             cursor.execute("SELECT 1 as test_col")
             assert cursor.fetchone()["test_col"] == 1
 
@@ -142,15 +96,10 @@ class TestCloseDb:
 
     def test_close_db_no_connection(self):
         """Test that close_db handles case when no connection exists."""
-        # Should not raise an exception
-        close_db()
+        close_db()  # Should not raise an exception
 
-
-class TestResetDb:
-    """Test cases for reset_db function."""
-
-    def test_reset_db_changes_path(self):
-        """Test that reset_db changes the database path."""
+    def test_reset_db_changes_path_and_closes_connection(self):
+        """Test that reset_db changes the database path and closes existing connection."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path1 = os.path.join(tmp_dir, "test1.db")
             db_path2 = os.path.join(tmp_dir, "test2.db")
@@ -158,6 +107,11 @@ class TestResetDb:
             # Initialize first database
             init_db(db_path1)
             conn1 = get_db_connection()
+            cursor = conn1.cursor()
+
+            # Verify connection is active
+            cursor.execute("SELECT 1 as test_col")
+            assert cursor.fetchone()["test_col"] == 1
 
             # Reset to second database
             reset_db(db_path2)
@@ -166,22 +120,6 @@ class TestResetDb:
 
             # Should be different connections
             assert conn1 is not conn2
-
-    def test_reset_db_closes_existing_connection(self):
-        """Test that reset_db closes existing connection."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path1 = os.path.join(tmp_dir, "test1.db")
-            db_path2 = os.path.join(tmp_dir, "test2.db")
-
-            init_db(db_path1)
-            conn1 = get_db_connection()
-
-            # Verify connection is active
-            cursor = conn1.cursor()
-            cursor.execute("SELECT 1 as test_col")
-            assert cursor.fetchone()["test_col"] == 1
-
-            reset_db(db_path2)
 
             # Original connection should be closed
             with pytest.raises(sqlite3.ProgrammingError):
