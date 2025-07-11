@@ -21,7 +21,7 @@ def test_data_files():
     test_dir = Path(__file__).parent
     project_root = test_dir.parent
     return {
-        "client": test_dir / "test-client.json",
+        "client": test_dir / "etc" / "test-client.json",
         "invoice_data": project_root / "invoice-data-3-31.txt",
     }
 

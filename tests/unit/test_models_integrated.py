@@ -1,0 +1,306 @@
+"""Consolidated unit tests for all data models."""
+
+import pytest
+
+from application.models import (
+    Customer,
+    Invoice,
+    InvoiceDetails,
+    InvoiceItem,
+    LineItem,
+    Vendor,
+    parse_date_safely,
+)
+from tests.unit.test_helpers import (
+    check_from_dict_method,
+    create_test_customer,
+    create_test_invoice,
+    temp_db,
+)
+
+
+class TestModelFromDict:
+    """Test from_dict methods for all models using shared helper."""
+
+    def test_customer_from_dict(self):
+        """Test Customer.from_dict method."""
+        valid_record = {
+            "id": 1,
+            "name": "Test Company",
+            "address": "123 Test St",
+            "created_at": "2025-01-01 00:00:00",
+        }
+        check_from_dict_method(
+            Customer, valid_record, ["name", "address", "created_at"]
+        )
+
+    def test_invoice_from_dict(self):
+        """Test Invoice.from_dict method."""
+        valid_record = {
+            "id": 1,
+            "customer_id": 1,
+            "vendor_id": 1,
+            "invoice_number": "2025.03.15",
+            "invoice_date": "03/15/2025",
+            "due_date": "04/14/2025",
+            "total_amount": 1200.0,
+            "created_at": "2025-03-15 10:30:00",
+        }
+        check_from_dict_method(
+            Invoice,
+            valid_record,
+            ["customer_id", "vendor_id", "invoice_number", "created_at"],
+        )
+
+    def test_invoice_item_from_dict(self):
+        """Test InvoiceItem.from_dict method."""
+        valid_record = {
+            "id": 1,
+            "invoice_id": 1,
+            "work_date": "03/15/2025",
+            "description": "Software development work",
+            "quantity": 8.0,
+            "rate": 150.0,
+            "amount": 1200.0,
+        }
+        check_from_dict_method(
+            InvoiceItem,
+            valid_record,
+            ["invoice_id", "work_date", "description", "quantity", "rate", "amount"],
+        )
+
+    def test_vendor_from_dict(self):
+        """Test Vendor.from_dict method."""
+        valid_record = {
+            "id": 1,
+            "name": "Havelick Software Solutions, LLC",
+            "address": "7815 Robinson Way\nArvada CO 80004",
+            "email": "tristan@havelick.com",
+            "phone": "303-475-7244",
+            "created_at": "2025-01-01 00:00:00",
+        }
+        check_from_dict_method(
+            Vendor, valid_record, ["name", "address", "email", "phone", "created_at"]
+        )
+
+
+class TestCustomerOperations:
+    """Test Customer model operations."""
+
+    def test_create_customer(self, temp_db):
+        """Test creating a customer."""
+        customer_id = Customer.create("Test Company", "123 Test St")
+        assert isinstance(customer_id, int)
+        assert customer_id > 0
+
+    def test_get_customer_by_name(self, temp_db):
+        """Test getting customer by name."""
+        customer_id = Customer.create("Test Company", "123 Test St")
+        customer = Customer.get_by_name("Test Company")
+
+        assert customer is not None
+        assert customer.id == customer_id
+        assert customer.name == "Test Company"
+        assert customer.address == "123 Test St"
+
+    def test_get_nonexistent_customer(self, temp_db):
+        """Test getting nonexistent customer returns None."""
+        customer = Customer.get_by_name("Nonexistent Company")
+        assert customer is None
+
+    def test_customer_upsert_new(self, temp_db):
+        """Test upsert creates new customer."""
+        customer_id = Customer.upsert("New Company", "123 New St")
+        assert customer_id > 0
+
+        customer = Customer.get_by_name("New Company")
+        assert customer is not None
+        assert customer.address == "123 New St"
+
+    def test_customer_upsert_existing(self, temp_db):
+        """Test upsert updates existing customer."""
+        original_id = Customer.create("Test Company", "123 Original St")
+        updated_id = Customer.upsert("Test Company", "456 Updated St")
+
+        assert updated_id == original_id
+
+        customer = Customer.get_by_name("Test Company")
+        assert customer is not None
+        assert customer.address == "456 Updated St"
+
+    def test_customer_list_all(self, temp_db):
+        """Test listing all customers."""
+        Customer.create("Company A", "123 A St")
+        Customer.create("Company B", "456 B St")
+
+        customers = Customer.list_all()
+        assert len(customers) == 2
+        assert customers[0].name == "Company A"  # Ordered by name
+        assert customers[1].name == "Company B"
+
+    def test_customer_import_from_json(self, temp_db):
+        """Test importing customer from JSON data."""
+        json_data = {
+            "client": {
+                "name": "JSON Company",
+                "address": "123 JSON St",
+            }
+        }
+
+        customer_id = Customer.import_from_json(json_data)
+        assert customer_id > 0
+
+        customer = Customer.get_by_name("JSON Company")
+        assert customer is not None
+        assert customer.address == "123 JSON St"
+
+
+class TestInvoiceOperations:
+    """Test Invoice model operations."""
+
+    def test_create_invoice(self, temp_db):
+        """Test creating an invoice."""
+        customer_id = create_test_customer()
+        invoice_id = create_test_invoice(customer_id)
+
+        assert isinstance(invoice_id, int)
+        assert invoice_id > 0
+
+    def test_get_invoice_data(self, temp_db):
+        """Test getting invoice data."""
+        customer_id = create_test_customer("Test Company", "123 Test St")
+        invoice_id = create_test_invoice(customer_id, "2025.03.15", 1200.0)
+
+        invoice_data = Invoice.get_data(invoice_id)
+        assert invoice_data is not None
+        assert invoice_data["invoice_number"] == "2025.03.15"
+        assert invoice_data["total"] == 1200.0
+        assert invoice_data["client"]["name"] == "Test Company"
+        assert invoice_data["company"]["name"] == "Havelick Software Solutions, LLC"
+
+    def test_get_nonexistent_invoice(self, temp_db):
+        """Test getting nonexistent invoice returns None."""
+        invoice_data = Invoice.get_data(99999)
+        assert invoice_data is None
+
+    def test_invoice_unique_number_constraint(self, temp_db):
+        """Test that duplicate invoice numbers are rejected."""
+        customer_id = create_test_customer()
+
+        # First invoice should succeed
+        invoice_id1 = create_test_invoice(customer_id, "2025.03.15")
+        assert invoice_id1 > 0
+
+        # Second invoice with same number should fail
+        with pytest.raises(Exception):
+            create_test_invoice(customer_id, "2025.03.15")
+
+    def test_invoice_list_all(self, temp_db):
+        """Test listing all invoices."""
+        customer_id = create_test_customer()
+        create_test_invoice(customer_id, "2025.03.15", 1000.0)
+        create_test_invoice(customer_id, "2025.03.16", 1500.0)
+
+        invoices = Invoice.list_all()
+        assert len(invoices) == 2
+        # Check that both invoices are present (order may vary)
+        invoice_numbers = [inv["invoice_number"] for inv in invoices]
+        assert "2025.03.15" in invoice_numbers
+        assert "2025.03.16" in invoice_numbers
+
+    def test_invoice_list_by_customer(self, temp_db):
+        """Test listing invoices for specific customer."""
+        customer1_id = create_test_customer("Customer 1", "123 St")
+        customer2_id = create_test_customer("Customer 2", "456 St")
+
+        create_test_invoice(customer1_id, "2025.03.15")
+        create_test_invoice(customer2_id, "2025.03.16")
+
+        customer1_invoices = Invoice.list_all(customer_id=customer1_id)
+        assert len(customer1_invoices) == 1
+        assert customer1_invoices[0]["customer_name"] == "Customer 1"
+
+
+class TestInvoiceItemOperations:
+    """Test InvoiceItem model operations."""
+
+    def test_add_invoice_item(self, temp_db):
+        """Test adding an invoice item."""
+        customer_id = create_test_customer()
+        invoice_id = create_test_invoice(customer_id)
+
+        line_item = LineItem(
+            invoice_id=invoice_id,
+            work_date=parse_date_safely("03/15/2025"),
+            description="Test work",
+            quantity=8.0,
+            rate=150.0,
+            amount=1200.0,
+        )
+
+        InvoiceItem.add(line_item)
+
+        # Verify item was added by checking invoice data
+        invoice_data = Invoice.get_data(invoice_id)
+        assert invoice_data is not None
+        assert len(invoice_data["items"]) == 1
+        assert invoice_data["items"][0]["description"] == "Test work"
+        assert invoice_data["items"][0]["quantity"] == 8.0
+        assert invoice_data["items"][0]["rate"] == 150.0
+        assert invoice_data["items"][0]["amount"] == 1200.0
+
+    def test_add_multiple_invoice_items(self, temp_db):
+        """Test adding multiple invoice items."""
+        customer_id = create_test_customer()
+        invoice_id = create_test_invoice(customer_id)
+
+        # Add two items
+        item1 = LineItem(
+            invoice_id=invoice_id,
+            work_date=parse_date_safely("03/15/2025"),
+            description="Work 1",
+            quantity=4.0,
+            rate=100.0,
+            amount=400.0,
+        )
+
+        item2 = LineItem(
+            invoice_id=invoice_id,
+            work_date=parse_date_safely("03/16/2025"),
+            description="Work 2",
+            quantity=6.0,
+            rate=125.0,
+            amount=750.0,
+        )
+
+        InvoiceItem.add(item1)
+        InvoiceItem.add(item2)
+
+        # Verify both items were added
+        invoice_data = Invoice.get_data(invoice_id)
+        assert invoice_data is not None
+        assert len(invoice_data["items"]) == 2
+        assert invoice_data["items"][0]["description"] == "Work 1"
+        assert invoice_data["items"][1]["description"] == "Work 2"
+
+    def test_add_item_with_zero_amount(self, temp_db):
+        """Test adding item with zero amount."""
+        customer_id = create_test_customer()
+        invoice_id = create_test_invoice(customer_id)
+
+        line_item = LineItem(
+            invoice_id=invoice_id,
+            work_date=parse_date_safely("03/15/2025"),
+            description="Free consultation",
+            quantity=1.0,
+            rate=0.0,
+            amount=0.0,
+        )
+
+        InvoiceItem.add(line_item)
+
+        invoice_data = Invoice.get_data(invoice_id)
+        assert invoice_data is not None
+        assert len(invoice_data["items"]) == 1
+        assert invoice_data["items"][0]["rate"] == 0.0
+        assert invoice_data["items"][0]["amount"] == 0.0
