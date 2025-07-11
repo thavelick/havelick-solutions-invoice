@@ -13,9 +13,12 @@ import sys
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
-from database import (
-    InvoiceDB,
+from application import db
+from application.models import (
+    Customer,
+    Invoice,
     generate_invoice_metadata_from_filename,
+    import_invoice_from_files,
     parse_date_to_display,
     validate_amount,
 )
@@ -204,7 +207,7 @@ def legacy_main(client_file, invoice_data_file, output_dir, db_path="invoices.db
     """Legacy main function for backward compatibility."""
     try:
         # Initialize database
-        db = InvoiceDB(db_path)
+        db.init_db(db_path)
 
         # Load data using helper functions
         client_data = load_client_data(client_file)
@@ -212,10 +215,10 @@ def legacy_main(client_file, invoice_data_file, output_dir, db_path="invoices.db
         invoice_metadata = generate_invoice_metadata(invoice_data_file)
 
         # Import customer to database
-        customer_id = db.import_customer_from_json(client_data)
+        customer_id = Customer.import_from_json(client_data)
 
         # Import invoice to database
-        db.import_invoice_from_files(customer_id, invoice_data_file, items)
+        import_invoice_from_files(customer_id, invoice_data_file, items)
 
         # Combine all data
         data = {
@@ -235,7 +238,7 @@ def legacy_main(client_file, invoice_data_file, output_dir, db_path="invoices.db
 
 def cmd_import_items(args):
     """Import invoice items from TSV file."""
-    db = InvoiceDB(args.db_path)
+    db.init_db(args.db_path)
 
     # Load and parse items
     items = load_invoice_items(args.file)
@@ -246,7 +249,7 @@ def cmd_import_items(args):
         sys.exit(1)
 
     # Import to database
-    invoice_id = db.import_invoice_from_files(args.customer_id, args.file, items)
+    invoice_id = import_invoice_from_files(args.customer_id, args.file, items)
 
     total = sum(item["quantity"] * item["rate"] for item in items)
     print(f"Imported {len(items)} items for invoice {invoice_id} (Total: ${total:.2f})")
@@ -254,34 +257,34 @@ def cmd_import_items(args):
 
 def cmd_import_customer(args):
     """Import customer from JSON file."""
-    db = InvoiceDB(args.db_path)
+    db.init_db(args.db_path)
 
     # Load customer data
     client_data = load_client_data(args.file)
 
     # Import to database
-    customer_id = db.import_customer_from_json(client_data)
+    customer_id = Customer.import_from_json(client_data)
 
-    customer = db.get_customer_by_name(client_data["client"]["name"])
+    customer = Customer.get_by_name(client_data["client"]["name"])
     if customer is None:
         raise ValueError(f"Failed to find customer: {client_data['client']['name']}")
-    print(f"Imported customer: {customer['name']} (ID: {customer_id})")
+    print(f"Imported customer: {customer.name} (ID: {customer_id})")
 
 
 def cmd_create_customer(args):
     """Create a new customer."""
-    db = InvoiceDB(args.db_path)
+    db.init_db(args.db_path)
 
-    customer_id = db.create_customer(args.name, args.address)
+    customer_id = Customer.create(args.name, args.address)
     print(f"Created customer: {args.name} (ID: {customer_id})")
 
 
 def cmd_generate_invoice(args):
     """Generate invoice from database."""
-    db = InvoiceDB(args.db_path)
+    db.init_db(args.db_path)
 
     # Get invoice data from database
-    invoice_data = db.get_invoice_data(args.invoice_id)
+    invoice_data = Invoice.get_data(args.invoice_id)
 
     if not invoice_data:
         print(f"Error: Invoice {args.invoice_id} not found")
@@ -293,9 +296,9 @@ def cmd_generate_invoice(args):
 
 def cmd_list_customers(args):
     """List all customers."""
-    db = InvoiceDB(args.db_path)
+    db.init_db(args.db_path)
 
-    customers = db.list_customers()
+    customers = Customer.list_all()
 
     if not customers:
         print("No customers found")
@@ -306,14 +309,14 @@ def cmd_list_customers(args):
     print("-" * 30)
 
     for customer in customers:
-        print(f"{customer['id']:2d} | {customer['name']}")
+        print(f"{customer.id:2d} | {customer.name}")
 
 
 def cmd_list_invoices(args):
     """List invoices."""
-    db = InvoiceDB(args.db_path)
+    db.init_db(args.db_path)
 
-    invoices = db.list_invoices(args.customer_id)
+    invoices = Invoice.list_all(args.customer_id)
 
     if not invoices:
         print("No invoices found")
