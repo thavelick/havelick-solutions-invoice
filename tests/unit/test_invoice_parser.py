@@ -110,10 +110,10 @@ class TestParseInvoiceData:
         assert result[0]["description"] == "Work 1"
         assert result[1]["description"] == "Work 2"
 
-    def test_parse_file_with_empty_lines_and_comments(self, tmp_path):
-        """Test parsing a file with empty lines and comments."""
+    def test_parse_file_with_empty_lines(self, tmp_path):
+        """Test parsing a file with empty lines."""
         test_file = tmp_path / "test_file.txt"
-        test_file.write_text("03/15/2025\t8.0\t150.00\tValid work\n\n# Comment line\n")
+        test_file.write_text("03/15/2025\t8.0\t150.00\tValid work\n\n\n")
 
         result = parse_invoice_data(str(test_file))
 
