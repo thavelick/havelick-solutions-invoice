@@ -439,8 +439,8 @@ def import_invoice_from_files(
         details = InvoiceDetails(
             invoice_number=metadata["invoice_number"],
             customer_id=customer_id,
-            invoice_date=metadata["invoice_date"],
-            due_date=metadata["due_date"],
+            invoice_date=parse_date_safely(metadata["invoice_date"]),
+            due_date=parse_date_safely(metadata["due_date"]),
             total_amount=total_amount,
         )
         invoice_id = Invoice.create(details)
