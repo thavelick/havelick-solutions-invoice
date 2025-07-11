@@ -1,9 +1,16 @@
 """Unit tests for invoice parsing functions."""
 
 import json
+
 import pytest
 
-from generate_invoice import _parse_invoice_line, parse_invoice_data, load_client_data, load_invoice_items, generate_invoice_metadata
+from generate_invoice import (
+    _parse_invoice_line,
+    generate_invoice_metadata,
+    load_client_data,
+    load_invoice_items,
+    parse_invoice_data,
+)
 
 
 class TestParseInvoiceLine:
@@ -13,7 +20,7 @@ class TestParseInvoiceLine:
         """Test parsing a valid line with zero-padded date."""
         line = "03/15/2025\t8.0\t150.00\tSoftware development work"
         result = _parse_invoice_line(line)
-        
+
         assert result == {
             "date": "03/15/2025",
             "description": "Software development work",
@@ -25,10 +32,10 @@ class TestParseInvoiceLine:
         """Test parsing a valid line with single digit month/day."""
         line = "3/5/2025\t4.0\t200.00\tConsulting services"
         result = _parse_invoice_line(line)
-        
+
         assert result == {
             "date": "03/05/2025",
-            "description": "Consulting services", 
+            "description": "Consulting services",
             "quantity": 4.0,
             "rate": 50.0,  # 200.00 / 4.0
         }
@@ -37,41 +44,41 @@ class TestParseInvoiceLine:
         """Test parsing a line with insufficient tab-separated fields."""
         line = "03/15/2025\t8.0\t150.00"  # Missing description
         result = _parse_invoice_line(line)
-        
+
         assert result is None
 
     def test_parse_line_with_invalid_quantity(self):
         """Test parsing a line with invalid quantity."""
         line = "03/15/2025\tinvalid\t150.00\tSoftware development work"
-        
+
         with pytest.raises(ValueError, match="Invalid quantity 'invalid'"):
             _parse_invoice_line(line)
 
     def test_parse_line_with_negative_quantity(self):
         """Test parsing a line with negative quantity."""
         line = "03/15/2025\t-2.0\t150.00\tSoftware development work"
-        
+
         with pytest.raises(ValueError, match="Quantity must be positive"):
             _parse_invoice_line(line)
 
     def test_parse_line_with_zero_quantity(self):
         """Test parsing a line with zero quantity."""
         line = "03/15/2025\t0.0\t150.00\tSoftware development work"
-        
+
         with pytest.raises(ValueError, match="Quantity must be positive"):
             _parse_invoice_line(line)
 
     def test_parse_line_with_invalid_date_format(self):
         """Test parsing a line with invalid date format."""
         line = "2025-03-15\t8.0\t150.00\tSoftware development work"
-        
+
         with pytest.raises(ValueError, match="Invalid date format"):
             _parse_invoice_line(line)
 
     def test_parse_line_with_invalid_date(self):
         """Test parsing a line with invalid date."""
         line = "13/45/2025\t8.0\t150.00\tSoftware development work"
-        
+
         with pytest.raises(ValueError, match="Invalid date"):
             _parse_invoice_line(line)
 
@@ -88,9 +95,9 @@ class TestParseInvoiceData:
         """Test parsing a valid invoice data file."""
         test_file = tmp_path / "test_file.txt"
         test_file.write_text("03/15/2025\t8.0\t150.00\tSoftware development work\n")
-        
+
         result = parse_invoice_data(str(test_file))
-        
+
         assert len(result) == 1
         assert result[0]["date"] == "03/15/2025"
         assert result[0]["description"] == "Software development work"
@@ -100,10 +107,12 @@ class TestParseInvoiceData:
     def test_parse_multiple_lines(self, tmp_path):
         """Test parsing a file with multiple lines."""
         test_file = tmp_path / "test_file.txt"
-        test_file.write_text("03/15/2025\t8.0\t150.00\tWork 1\n03/16/2025\t4.0\t200.00\tWork 2\n")
-        
+        test_file.write_text(
+            "03/15/2025\t8.0\t150.00\tWork 1\n03/16/2025\t4.0\t200.00\tWork 2\n"
+        )
+
         result = parse_invoice_data(str(test_file))
-        
+
         assert len(result) == 2
         assert result[0]["description"] == "Work 1"
         assert result[1]["description"] == "Work 2"
@@ -112,9 +121,9 @@ class TestParseInvoiceData:
         """Test parsing a file with empty lines and comments."""
         test_file = tmp_path / "test_file.txt"
         test_file.write_text("03/15/2025\t8.0\t150.00\tValid work\n\n# Comment line\n")
-        
+
         result = parse_invoice_data(str(test_file))
-        
+
         assert len(result) == 1
         assert result[0]["description"] == "Valid work"
 
@@ -133,14 +142,14 @@ class TestLoadClientData:
         client_data = {
             "client": {
                 "name": "Acme Corp",
-                "address": "123 Business St\nAnytown, CA 90210"
+                "address": "123 Business St\nAnytown, CA 90210",
             },
-            "payment_terms": "Net 30 days"
+            "payment_terms": "Net 30 days",
         }
         client_file.write_text(json.dumps(client_data))
-        
+
         result = load_client_data(str(client_file))
-        
+
         assert result == client_data
         assert result["client"]["name"] == "Acme Corp"
         assert result["client"]["address"] == "123 Business St\nAnytown, CA 90210"
@@ -150,7 +159,7 @@ class TestLoadClientData:
         """Test loading file with invalid JSON."""
         client_file = tmp_path / "invalid.json"
         client_file.write_text("{invalid json")
-        
+
         with pytest.raises(ValueError, match="Invalid JSON"):
             load_client_data(str(client_file))
 
@@ -159,20 +168,16 @@ class TestLoadClientData:
         client_file = tmp_path / "missing_client.json"
         client_data = {"payment_terms": "Net 30 days"}
         client_file.write_text(json.dumps(client_data))
-        
+
         with pytest.raises(ValueError, match="Client data missing 'client' field"):
             load_client_data(str(client_file))
 
     def test_load_missing_client_name(self, tmp_path):
         """Test loading JSON with missing client name."""
         client_file = tmp_path / "missing_name.json"
-        client_data = {
-            "client": {
-                "address": "123 Business St\nAnytown, CA 90210"
-            }
-        }
+        client_data = {"client": {"address": "123 Business St\nAnytown, CA 90210"}}
         client_file.write_text(json.dumps(client_data))
-        
+
         with pytest.raises(ValueError, match="Client name is required"):
             load_client_data(str(client_file))
 
@@ -180,26 +185,19 @@ class TestLoadClientData:
         """Test loading JSON with empty client name."""
         client_file = tmp_path / "empty_name.json"
         client_data = {
-            "client": {
-                "name": "",
-                "address": "123 Business St\nAnytown, CA 90210"
-            }
+            "client": {"name": "", "address": "123 Business St\nAnytown, CA 90210"}
         }
         client_file.write_text(json.dumps(client_data))
-        
+
         with pytest.raises(ValueError, match="Client name is required"):
             load_client_data(str(client_file))
 
     def test_load_missing_client_address(self, tmp_path):
         """Test loading JSON with missing client address."""
         client_file = tmp_path / "missing_address.json"
-        client_data = {
-            "client": {
-                "name": "Acme Corp"
-            }
-        }
+        client_data = {"client": {"name": "Acme Corp"}}
         client_file.write_text(json.dumps(client_data))
-        
+
         with pytest.raises(ValueError, match="Client address is required"):
             load_client_data(str(client_file))
 
@@ -211,9 +209,9 @@ class TestLoadInvoiceItems:
         """Test loading valid invoice items."""
         test_file = tmp_path / "invoice_items.txt"
         test_file.write_text("03/15/2025\t8.0\t150.00\tSoftware development work\n")
-        
+
         result = load_invoice_items(str(test_file))
-        
+
         assert len(result) == 1
         assert result[0]["date"] == "03/15/2025"
         assert result[0]["description"] == "Software development work"
@@ -227,7 +225,7 @@ class TestLoadInvoiceItems:
         """Test loading file with invalid content raises wrapped error."""
         test_file = tmp_path / "invalid_items.txt"
         test_file.write_text("03/15/2025\tinvalid_quantity\t150.00\tWork\n")
-        
+
         with pytest.raises(ValueError, match="Error loading invoice items"):
             load_invoice_items(str(test_file))
 
@@ -235,7 +233,7 @@ class TestLoadInvoiceItems:
         """Test loading empty file raises wrapped error."""
         test_file = tmp_path / "empty_items.txt"
         test_file.write_text("")
-        
+
         with pytest.raises(ValueError, match="Error loading invoice items"):
             load_invoice_items(str(test_file))
 
@@ -246,7 +244,7 @@ class TestGenerateInvoiceMetadata:
     def test_generate_metadata_valid_filename(self):
         """Test generating metadata from valid filename."""
         result = generate_invoice_metadata("invoice-data-3-15.txt")
-        
+
         assert "invoice_number" in result
         assert "invoice_date" in result
         assert "due_date" in result
@@ -260,7 +258,7 @@ class TestGenerateInvoiceMetadata:
     def test_generate_metadata_fallback_filename(self):
         """Test generating metadata from non-standard filename."""
         result = generate_invoice_metadata("some-other-file.txt")
-        
+
         assert "invoice_number" in result
         assert "invoice_date" in result
         assert "due_date" in result

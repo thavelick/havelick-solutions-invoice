@@ -2,7 +2,17 @@
 
 import pytest
 
-from application.models import validate_amount, parse_date_safely, parse_date_to_display, generate_invoice_metadata_from_filename, calculate_due_date, Vendor, Customer, Invoice, InvoiceItem
+from application.models import (
+    Customer,
+    Invoice,
+    InvoiceItem,
+    Vendor,
+    calculate_due_date,
+    generate_invoice_metadata_from_filename,
+    parse_date_safely,
+    parse_date_to_display,
+    validate_amount,
+)
 
 
 class TestValidateAmount:
@@ -148,7 +158,7 @@ class TestGenerateInvoiceMetadataFromFilename:
     def test_generate_metadata_valid_filename(self):
         """Test generating metadata from valid filename."""
         result = generate_invoice_metadata_from_filename("invoice-data-3-15.txt")
-        
+
         assert result["invoice_number"] == "2025.03.15"
         assert result["invoice_date"] == "03/15/2025"
         assert result["due_date"] == "04/14/2025"  # 30 days after 03/15/2025
@@ -156,7 +166,7 @@ class TestGenerateInvoiceMetadataFromFilename:
     def test_generate_metadata_single_digit_numbers(self):
         """Test generating metadata with single digit month and day."""
         result = generate_invoice_metadata_from_filename("invoice-data-5-1.txt")
-        
+
         assert result["invoice_number"] == "2025.05.01"
         assert result["invoice_date"] == "05/01/2025"
         assert result["due_date"] == "05/31/2025"  # 30 days after 05/01/2025
@@ -164,15 +174,17 @@ class TestGenerateInvoiceMetadataFromFilename:
     def test_generate_metadata_double_digit_numbers(self):
         """Test generating metadata with double digit month and day."""
         result = generate_invoice_metadata_from_filename("invoice-data-12-31.txt")
-        
+
         assert result["invoice_number"] == "2025.12.31"
         assert result["invoice_date"] == "12/31/2025"
         assert result["due_date"] == "01/30/2026"  # 30 days after 12/31/2025
 
     def test_generate_metadata_full_path(self):
         """Test generating metadata from full file path."""
-        result = generate_invoice_metadata_from_filename("/path/to/invoice-data-6-15.txt")
-        
+        result = generate_invoice_metadata_from_filename(
+            "/path/to/invoice-data-6-15.txt"
+        )
+
         assert result["invoice_number"] == "2025.06.15"
         assert result["invoice_date"] == "06/15/2025"
         assert result["due_date"] == "07/15/2025"  # 30 days after 06/15/2025
@@ -205,12 +217,12 @@ class TestGenerateInvoiceMetadataFromFilename:
     def test_generate_metadata_fallback_to_current_date(self):
         """Test generating metadata falls back to current date for non-standard filename."""
         result = generate_invoice_metadata_from_filename("some-other-file.txt")
-        
+
         # Should contain all required keys
         assert "invoice_number" in result
         assert "invoice_date" in result
         assert "due_date" in result
-        
+
         # Should be in correct format
         assert result["invoice_number"].startswith("2025.")
         assert "/" in result["invoice_date"]

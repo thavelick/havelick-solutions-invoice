@@ -17,11 +17,11 @@ class TestInvoiceItemFromDict:
             "description": "Software development work",
             "quantity": 8.0,
             "rate": 150.0,
-            "amount": 1200.0
+            "amount": 1200.0,
         }
-        
+
         item = InvoiceItem.from_dict(record)
-        
+
         assert item.id == 1
         assert item.invoice_id == 1
         assert item.work_date == "03/15/2025"
@@ -38,10 +38,10 @@ class TestInvoiceItemFromDict:
             "work_date": "03/15/2025",
             "description": "Software development work",
             "quantity": 8.0,
-            "rate": 150.0
+            "rate": 150.0,
             # missing amount
         }
-        
+
         with pytest.raises(KeyError):
             InvoiceItem.from_dict(record)
 
@@ -54,11 +54,11 @@ class TestInvoiceItemFromDict:
             "description": None,
             "quantity": None,
             "rate": None,
-            "amount": None
+            "amount": None,
         }
-        
+
         item = InvoiceItem.from_dict(record)
-        
+
         assert item.id == 1
         assert item.invoice_id is None
         assert item.work_date is None
@@ -76,11 +76,11 @@ class TestInvoiceItemFromDict:
             "description": "",
             "quantity": 0.0,
             "rate": 0.0,
-            "amount": 0.0
+            "amount": 0.0,
         }
-        
+
         item = InvoiceItem.from_dict(record)
-        
+
         assert item.id == 1
         assert item.invoice_id == 1
         assert item.work_date == ""

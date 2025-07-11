@@ -16,11 +16,11 @@ class TestVendorFromDict:
             "address": "7815 Robinson Way\nArvada CO 80004",
             "email": "tristan@havelick.com",
             "phone": "303-475-7244",
-            "created_at": "2025-01-01 00:00:00"
+            "created_at": "2025-01-01 00:00:00",
         }
-        
+
         vendor = Vendor.from_dict(record)
-        
+
         assert vendor.id == 1
         assert vendor.name == "Havelick Software Solutions, LLC"
         assert vendor.address == "7815 Robinson Way\nArvada CO 80004"
@@ -35,10 +35,10 @@ class TestVendorFromDict:
             "name": "Test Company",
             "address": "123 Test St",
             "email": "test@example.com",
-            "phone": "555-1234"
+            "phone": "555-1234",
             # missing created_at
         }
-        
+
         with pytest.raises(KeyError):
             Vendor.from_dict(record)
 
@@ -50,11 +50,11 @@ class TestVendorFromDict:
             "address": None,
             "email": None,
             "phone": None,
-            "created_at": None
+            "created_at": None,
         }
-        
+
         vendor = Vendor.from_dict(record)
-        
+
         assert vendor.id == 1
         assert vendor.name is None
         assert vendor.address is None
@@ -70,11 +70,11 @@ class TestVendorFromDict:
             "address": "",
             "email": "",
             "phone": "",
-            "created_at": ""
+            "created_at": "",
         }
-        
+
         vendor = Vendor.from_dict(record)
-        
+
         assert vendor.id == 1
         assert vendor.name == ""
         assert vendor.address == ""
