@@ -55,17 +55,6 @@ class Vendor:
             created_at=record["created_at"]
         )
     
-    @staticmethod
-    def get(vendor_id: int) -> Optional['Vendor']:
-        """Get vendor by ID."""
-        connection = db.get_db_connection()
-        cursor = connection.cursor()
-        cursor.execute("SELECT * FROM vendors WHERE id = ?", (vendor_id,))
-        record = cursor.fetchone()
-        
-        if record:
-            return Vendor.from_dict(record)
-        return None
 
 
 class Customer:
