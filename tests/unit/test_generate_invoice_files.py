@@ -68,7 +68,9 @@ class TestGenerateInvoiceFiles:
 </html>
         """.strip()
 
-    def test_generate_files_creates_html_and_pdf(self, sample_invoice_data, mock_template_html):
+    def test_generate_files_creates_html_and_pdf(
+        self, sample_invoice_data, mock_template_html
+    ):
         """Test that both HTML and PDF files are created."""
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create template file
@@ -91,7 +93,9 @@ class TestGenerateInvoiceFiles:
             assert os.path.exists(expected_html)
             assert os.path.exists(expected_pdf)
 
-    def test_html_content_includes_invoice_data(self, sample_invoice_data, mock_template_html):
+    def test_html_content_includes_invoice_data(
+        self, sample_invoice_data, mock_template_html
+    ):
         """Test that HTML content includes the invoice data."""
         with tempfile.TemporaryDirectory() as temp_dir:
             template_path = os.path.join(temp_dir, "invoice_template.html")

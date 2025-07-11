@@ -3,11 +3,11 @@
 import pytest
 
 from application.models import (
-    validate_amount,
+    calculate_due_date,
+    generate_invoice_metadata_from_filename,
     parse_date_safely,
     parse_date_to_display,
-    generate_invoice_metadata_from_filename,
-    calculate_due_date,
+    validate_amount,
 )
 
 
@@ -93,12 +93,12 @@ class TestGenerateInvoiceMetadataFromFilename:
     def test_generate_metadata_fallback_filename(self):
         """Test generating metadata from non-standard filename."""
         result = generate_invoice_metadata_from_filename("some-other-file.txt")
-        
+
         # Should contain all required keys
         assert "invoice_number" in result
         assert "invoice_date" in result
         assert "due_date" in result
-        
+
         # Should be in correct format
         assert result["invoice_number"].startswith("2025.")
         assert "/" in result["invoice_date"]
@@ -121,7 +121,9 @@ class TestCalculateDueDate:
 
     def test_calculate_due_date_leap_year(self):
         """Test calculating due date in leap year."""
-        assert calculate_due_date("02/15/2024", 30) == "03/16/2024"  # 2024 is a leap year
+        assert (
+            calculate_due_date("02/15/2024", 30) == "03/16/2024"
+        )  # 2024 is a leap year
 
     def test_calculate_due_date_invalid_date(self):
         """Test calculating due date with invalid date."""

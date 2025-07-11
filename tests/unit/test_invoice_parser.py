@@ -20,7 +20,7 @@ class TestParseInvoiceLine:
         """Test parsing valid invoice lines."""
         line = "03/15/2025\t8.0\t150.00\tSoftware development work"
         result = _parse_invoice_line(line)
-        
+
         assert result == {
             "date": "03/15/2025",
             "description": "Software development work",
@@ -30,7 +30,7 @@ class TestParseInvoiceLine:
 
         line = "3/5/2025\t4.0\t200.00\tConsulting services"
         result = _parse_invoice_line(line)
-        
+
         assert result == {
             "date": "03/05/2025",
             "description": "Consulting services",
@@ -47,31 +47,31 @@ class TestParseInvoiceLine:
     def test_parse_line_invalid_quantity(self):
         """Test parsing line with invalid quantity."""
         line = "03/15/2025\tinvalid\t150.00\tSoftware development work"
-        
+
         with pytest.raises(ValueError, match="Invalid quantity 'invalid'"):
             _parse_invoice_line(line)
 
     def test_parse_line_invalid_quantity_values(self):
         """Test parsing line with invalid quantity values."""
         line = "03/15/2025\t-2.0\t150.00\tSoftware development work"
-        
+
         with pytest.raises(ValueError, match="Quantity must be positive"):
             _parse_invoice_line(line)
 
         line = "03/15/2025\t0.0\t150.00\tSoftware development work"
-        
+
         with pytest.raises(ValueError, match="Quantity must be positive"):
             _parse_invoice_line(line)
 
     def test_parse_line_invalid_date(self):
         """Test parsing line with invalid date."""
         line = "2025-03-15\t8.0\t150.00\tSoftware development work"
-        
+
         with pytest.raises(ValueError, match="Invalid date format"):
             _parse_invoice_line(line)
 
         line = "13/45/2025\t8.0\t150.00\tSoftware development work"
-        
+
         with pytest.raises(ValueError, match="Invalid date"):
             _parse_invoice_line(line)
 
