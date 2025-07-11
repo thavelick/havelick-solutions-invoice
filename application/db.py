@@ -4,7 +4,7 @@ import sqlite3
 from typing import Optional
 
 
-# Global connection storage (for non-Flask usage)
+# Global connection storage
 _db_connection: Optional[sqlite3.Connection] = None
 _db_path: str = "invoices.db"
 
