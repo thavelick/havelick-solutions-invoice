@@ -7,7 +7,7 @@ from datetime import date
 import pytest
 
 from application.db import close_db, init_db
-from application.models import Customer, Invoice, InvoiceItem, import_invoice_from_files
+from application.models import Customer, Invoice, import_invoice_from_files
 
 
 class TestImportInvoiceFromFiles:
