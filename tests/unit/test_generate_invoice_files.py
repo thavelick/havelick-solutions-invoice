@@ -80,7 +80,7 @@ class TestGenerateInvoiceFiles:
             # Check HTML content includes key data
             with open(expected_html, "r", encoding="utf-8") as f:
                 html_content = f.read()
-                assert "2025.03.15" in html_content
+                assert "Invoice 2025.03.15" in html_content
                 assert "Acme Corporation" in html_content
                 assert "Web Development" in html_content
                 assert "$1200.00" in html_content
