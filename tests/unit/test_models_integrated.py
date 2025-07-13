@@ -10,13 +10,12 @@ from application.models import (
     Vendor,
     parse_date_safely,
 )
-from tests.unit.test_helpers import check_from_dict_method
 
 
 class TestModelFromDict:
-    """Test from_dict methods for all models using shared helper."""
+    """Test from_dict methods for all models using tool fixture."""
 
-    def test_customer_from_dict(self):
+    def test_customer_from_dict(self, from_dict_checker):
         """Test Customer.from_dict method."""
         valid_record = {
             "id": 1,
@@ -24,11 +23,9 @@ class TestModelFromDict:
             "address": "123 Test St",
             "created_at": "2025-01-01 00:00:00",
         }
-        check_from_dict_method(
-            Customer, valid_record, ["name", "address", "created_at"]
-        )
+        from_dict_checker(Customer, valid_record, ["name", "address", "created_at"])
 
-    def test_invoice_from_dict(self):
+    def test_invoice_from_dict(self, from_dict_checker):
         """Test Invoice.from_dict method."""
         valid_record = {
             "id": 1,
@@ -40,13 +37,13 @@ class TestModelFromDict:
             "total_amount": 1200.0,
             "created_at": "2025-03-15 10:30:00",
         }
-        check_from_dict_method(
+        from_dict_checker(
             Invoice,
             valid_record,
             ["customer_id", "vendor_id", "invoice_number", "created_at"],
         )
 
-    def test_invoice_item_from_dict(self):
+    def test_invoice_item_from_dict(self, from_dict_checker):
         """Test InvoiceItem.from_dict method."""
         valid_record = {
             "id": 1,
@@ -57,13 +54,13 @@ class TestModelFromDict:
             "rate": 150.0,
             "amount": 1200.0,
         }
-        check_from_dict_method(
+        from_dict_checker(
             InvoiceItem,
             valid_record,
             ["invoice_id", "work_date", "description", "quantity", "rate", "amount"],
         )
 
-    def test_vendor_from_dict(self):
+    def test_vendor_from_dict(self, from_dict_checker):
         """Test Vendor.from_dict method."""
         valid_record = {
             "id": 1,
@@ -73,7 +70,7 @@ class TestModelFromDict:
             "phone": "303-475-7244",
             "created_at": "2025-01-01 00:00:00",
         }
-        check_from_dict_method(
+        from_dict_checker(
             Vendor, valid_record, ["name", "address", "email", "phone", "created_at"]
         )
 
