@@ -14,6 +14,7 @@ HAVELICK_SOLUTIONS_VENDOR_ID = 1
 @dataclass
 class InvoiceDetails:
     """Details needed to create an invoice."""
+
     invoice_number: str
     customer_id: int
     invoice_date: str
@@ -24,6 +25,7 @@ class InvoiceDetails:
 @dataclass
 class LineItem:
     """Details for an invoice line item."""
+
     invoice_id: int
     work_date: str
     description: str
@@ -34,17 +36,19 @@ class LineItem:
 
 class Vendor:
     """Vendor model for managing company information."""
-    
-    def __init__(self, id: int, name: str, address: str, email: str, phone: str, created_at: str):
+
+    def __init__(
+        self, id: int, name: str, address: str, email: str, phone: str, created_at: str
+    ):
         self.id = id
         self.name = name
         self.address = address
         self.email = email
         self.phone = phone
         self.created_at = created_at
-    
+
     @staticmethod
-    def from_dict(record) -> 'Vendor':
+    def from_dict(record) -> "Vendor":
         """Create Vendor from database record."""
         return Vendor(
             id=record["id"],
@@ -52,58 +56,56 @@ class Vendor:
             address=record["address"],
             email=record["email"],
             phone=record["phone"],
-            created_at=record["created_at"]
+            created_at=record["created_at"],
         )
-    
 
 
 class Customer:
     """Customer model for managing client information."""
-    
+
     def __init__(self, id: int, name: str, address: str, created_at: str):
         self.id = id
         self.name = name
         self.address = address
         self.created_at = created_at
-    
+
     @staticmethod
-    def from_dict(record) -> 'Customer':
+    def from_dict(record) -> "Customer":
         """Create Customer from database record."""
         return Customer(
             id=record["id"],
             name=record["name"],
             address=record["address"],
-            created_at=record["created_at"]
+            created_at=record["created_at"],
         )
-    
+
     @staticmethod
     def create(name: str, address: str) -> int:
         """Create a new customer and return the customer ID."""
         connection = db.get_db_connection()
         cursor = connection.cursor()
         cursor.execute(
-            "INSERT INTO customers (name, address) VALUES (?, ?)",
-            (name, address)
+            "INSERT INTO customers (name, address) VALUES (?, ?)", (name, address)
         )
         connection.commit()
-        
+
         customer_id = cursor.lastrowid
         if customer_id is None:
             raise ValueError("Failed to create customer")
         return customer_id
-    
+
     @staticmethod
-    def get_by_name(name: str) -> Optional['Customer']:
+    def get_by_name(name: str) -> Optional["Customer"]:
         """Get customer by name."""
         connection = db.get_db_connection()
         cursor = connection.cursor()
         cursor.execute("SELECT * FROM customers WHERE name = ?", (name,))
         record = cursor.fetchone()
-        
+
         if record:
             return Customer.from_dict(record)
         return None
-    
+
     @staticmethod
     def upsert(name: str, address: str) -> int:
         """Insert or update customer, return customer ID."""
@@ -113,40 +115,48 @@ class Customer:
             connection = db.get_db_connection()
             cursor = connection.cursor()
             cursor.execute(
-                "UPDATE customers SET address = ? WHERE id = ?",
-                (address, customer.id)
+                "UPDATE customers SET address = ? WHERE id = ?", (address, customer.id)
             )
             connection.commit()
             return customer.id
-        
+
         # Create new customer
         return Customer.create(name, address)
-    
+
     @staticmethod
     def import_from_json(json_data: Dict[str, Any]) -> int:
         """Import customer from JSON data structure."""
         client_data = json_data.get("client", {})
         name = client_data.get("name", "") or ""
         address = client_data.get("address", "") or ""
-        
+
         return Customer.upsert(name, address)
-    
+
     @staticmethod
-    def list_all() -> List['Customer']:
+    def list_all() -> List["Customer"]:
         """List all customers."""
         connection = db.get_db_connection()
         cursor = connection.cursor()
         cursor.execute("SELECT * FROM customers ORDER BY name")
         records = cursor.fetchall()
-        
+
         return [Customer.from_dict(record) for record in records]
 
 
 class Invoice:
     """Invoice model for managing invoice information."""
-    
-    def __init__(self, id: int, invoice_number: str, customer_id: int, vendor_id: int,
-                 invoice_date: str, due_date: str, total_amount: float, created_at: str):
+
+    def __init__(
+        self,
+        id: int,
+        invoice_number: str,
+        customer_id: int,
+        vendor_id: int,
+        invoice_date: str,
+        due_date: str,
+        total_amount: float,
+        created_at: str,
+    ):
         self.id = id
         self.invoice_number = invoice_number
         self.customer_id = customer_id
@@ -155,9 +165,9 @@ class Invoice:
         self.due_date = due_date
         self.total_amount = total_amount
         self.created_at = created_at
-    
+
     @staticmethod
-    def from_dict(record) -> 'Invoice':
+    def from_dict(record) -> "Invoice":
         """Create Invoice from database record."""
         return Invoice(
             id=record["id"],
@@ -167,9 +177,9 @@ class Invoice:
             invoice_date=record["invoice_date"],
             due_date=record["due_date"],
             total_amount=record["total_amount"],
-            created_at=record["created_at"]
+            created_at=record["created_at"],
         )
-    
+
     @staticmethod
     def create(details: InvoiceDetails) -> int:
         """Create a new invoice and return the invoice ID."""
@@ -186,21 +196,21 @@ class Invoice:
                 details.invoice_date,
                 details.due_date,
                 details.total_amount,
-            )
+            ),
         )
         connection.commit()
-        
+
         invoice_id = cursor.lastrowid
         if invoice_id is None:
             raise ValueError("Failed to create invoice")
         return invoice_id
-    
+
     @staticmethod
     def get_data(invoice_id: int) -> Optional[Dict[str, Any]]:
         """Get complete invoice data including customer, vendor, and items."""
         connection = db.get_db_connection()
         cursor = connection.cursor()
-        
+
         # Get invoice with customer and vendor data
         cursor.execute(
             """SELECT i.invoice_number, i.invoice_date, i.due_date, i.total_amount,
@@ -211,22 +221,22 @@ class Invoice:
                JOIN customers c ON i.customer_id = c.id
                JOIN vendors v ON i.vendor_id = v.id
                WHERE i.id = ?""",
-            (invoice_id,)
+            (invoice_id,),
         )
-        
+
         invoice_row = cursor.fetchone()
         if not invoice_row:
             return None
-        
+
         # Get invoice items
         cursor.execute(
             """SELECT work_date, description, quantity, rate, amount
                FROM invoice_items
                WHERE invoice_id = ?
                ORDER BY work_date""",
-            (invoice_id,)
+            (invoice_id,),
         )
-        
+
         items = [
             {
                 "date": row[0],
@@ -237,7 +247,7 @@ class Invoice:
             }
             for row in cursor.fetchall()
         ]
-        
+
         return {
             "invoice_number": invoice_row[0],
             "invoice_date": invoice_row[1],
@@ -253,13 +263,13 @@ class Invoice:
             "payment_terms": "Net 30 days",
             "items": items,
         }
-    
+
     @staticmethod
     def list_all(customer_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """List invoices, optionally filtered by customer."""
         connection = db.get_db_connection()
         cursor = connection.cursor()
-        
+
         if customer_id:
             cursor.execute(
                 """SELECT i.id, i.invoice_number, c.name, i.invoice_date, i.total_amount
@@ -267,7 +277,7 @@ class Invoice:
                    JOIN customers c ON i.customer_id = c.id
                    WHERE i.customer_id = ?
                    ORDER BY i.invoice_date DESC""",
-                (customer_id,)
+                (customer_id,),
             )
         else:
             cursor.execute(
@@ -276,7 +286,7 @@ class Invoice:
                    JOIN customers c ON i.customer_id = c.id
                    ORDER BY i.invoice_date DESC"""
             )
-        
+
         return [
             {
                 "id": row[0],
@@ -291,9 +301,17 @@ class Invoice:
 
 class InvoiceItem:
     """Invoice item model for managing line items."""
-    
-    def __init__(self, id: int, invoice_id: int, work_date: str, description: str,
-                 quantity: float, rate: float, amount: float):
+
+    def __init__(
+        self,
+        id: int,
+        invoice_id: int,
+        work_date: str,
+        description: str,
+        quantity: float,
+        rate: float,
+        amount: float,
+    ):
         self.id = id
         self.invoice_id = invoice_id
         self.work_date = work_date
@@ -301,9 +319,9 @@ class InvoiceItem:
         self.quantity = quantity
         self.rate = rate
         self.amount = amount
-    
+
     @staticmethod
-    def from_dict(record) -> 'InvoiceItem':
+    def from_dict(record) -> "InvoiceItem":
         """Create InvoiceItem from database record."""
         return InvoiceItem(
             id=record["id"],
@@ -312,9 +330,9 @@ class InvoiceItem:
             description=record["description"],
             quantity=record["quantity"],
             rate=record["rate"],
-            amount=record["amount"]
+            amount=record["amount"],
         )
-    
+
     @staticmethod
     def add(item: LineItem):
         """Add an item to an invoice."""
@@ -331,7 +349,7 @@ class InvoiceItem:
                 item.quantity,
                 item.rate,
                 item.amount,
-            )
+            ),
         )
         connection.commit()
 
@@ -384,7 +402,7 @@ def calculate_due_date(invoice_date_str: str, days_out: int = 30) -> str:
 def generate_invoice_metadata_from_filename(invoice_data_file: str) -> Dict[str, str]:
     """Generate invoice number and dates from filename."""
     import os
-    
+
     try:
         # Generate invoice metadata from filename
         base_name = os.path.splitext(os.path.basename(invoice_data_file))[0]
@@ -407,7 +425,7 @@ def generate_invoice_metadata_from_filename(invoice_data_file: str) -> Dict[str,
             invoice_number = f"2025.{now.month:02d}.{now.day:02d}"
             invoice_date = now.strftime("%m/%d/%Y")
             due_date = calculate_due_date(invoice_date, 30)
-        
+
         return {
             "invoice_number": invoice_number,
             "invoice_date": invoice_date,
@@ -433,7 +451,7 @@ def import_invoice_from_files(
             if not isinstance(item.get("rate"), (int, float)) or item["rate"] < 0:
                 raise ValueError(f"Invalid rate for item: {item}")
             total_amount += item["quantity"] * item["rate"]
-        
+
         # Generate invoice details and create invoice
         metadata = generate_invoice_metadata_from_filename(invoice_data_file)
         details = InvoiceDetails(
@@ -444,12 +462,12 @@ def import_invoice_from_files(
             total_amount=total_amount,
         )
         invoice_id = Invoice.create(details)
-        
+
         # Add items
         for item in items:
             # Convert date format from MM/DD/YYYY to YYYY-MM-DD for database
             work_date = parse_date_safely(item["date"], "%m/%d/%Y")
-            
+
             amount = item["quantity"] * item["rate"]
             line_item = LineItem(
                 invoice_id=invoice_id,
@@ -460,8 +478,8 @@ def import_invoice_from_files(
                 amount=amount,
             )
             InvoiceItem.add(line_item)
-        
+
         return invoice_id
-    
+
     except (ValueError, KeyError, TypeError) as e:
         raise ValueError(f"Error importing invoice from files: {e}") from e
