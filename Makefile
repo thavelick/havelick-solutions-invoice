@@ -35,16 +35,28 @@ add-dev-dependency: # Add development dependency (usage: make add-dev-dependency
 	@echo "Adding development dependency: $(DEP)"
 	uv add --dev $(DEP)
 
-test: # Run playwright tests
-	@echo "Running tests.."
+test-integration: # Run integration tests
+	@echo "Running integration tests.."
+	uv run pytest tests/integration/
+
+test-unit: # Run unit tests
+	@echo "Running unit tests.."
+	uv run pytest tests/unit/
+
+test: # Run all tests
+	@echo "Running all tests.."
 	uv run pytest tests/
+
+test-with-coverage: # Run tests with coverage
+	@echo "Running tests with coverage.."
+	uv run pytest --cov=. --cov-report=html --cov-report=term tests/
 
 # -----------------------------------------------------------
 # CAUTION: If you have a file with the same name as make
 # command, you need to add it to .PHONY below, otherwise it
 # won't work. E.g. `make run` wouldn't work if you have
 # `run` file in pwd.
-.PHONY: help generate update setup lint add-dev-dependency test
+.PHONY: help
 
 # -----------------------------------------------------------
 # -----       (Makefile helpers and decoration)      --------

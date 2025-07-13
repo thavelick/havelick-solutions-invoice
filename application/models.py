@@ -126,8 +126,8 @@ class Customer:
     def import_from_json(json_data: Dict[str, Any]) -> int:
         """Import customer from JSON data structure."""
         client_data = json_data.get("client", {})
-        name = client_data.get("name", "")
-        address = client_data.get("address", "")
+        name = client_data.get("name", "") or ""
+        address = client_data.get("address", "") or ""
         
         return Customer.upsert(name, address)
     
@@ -439,8 +439,8 @@ def import_invoice_from_files(
         details = InvoiceDetails(
             invoice_number=metadata["invoice_number"],
             customer_id=customer_id,
-            invoice_date=metadata["invoice_date"],
-            due_date=metadata["due_date"],
+            invoice_date=parse_date_safely(metadata["invoice_date"]),
+            due_date=parse_date_safely(metadata["due_date"]),
             total_amount=total_amount,
         )
         invoice_id = Invoice.create(details)

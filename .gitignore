@@ -38,6 +38,10 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# Test coverage
+.coverage
+htmlcov/
+
 # Virtual environments
 .env
 .venv

@@ -19,5 +19,27 @@ dev = [
     "pylint>=3.3.7",
     "pyright>=1.1.402",
     "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
     "pytest-playwright>=0.7.0",
 ]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    ".venv/*",
+    "htmlcov/*",
+    "playwright.config.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
