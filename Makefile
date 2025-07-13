@@ -21,11 +21,10 @@ setup: # Setup project
 	uv sync
 	@echo "Done."
 
-lint: # Run linters (isort, black, pyright, pylint)
-	@echo "Running isort import sorter.."
-	uv run isort *.py tests/
-	@echo "Running black formatter.."
-	uv run black *.py tests/
+lint: # Run linters (ruff, pyright, pylint)
+	@echo "Running ruff formatter and linter.."
+	uv run ruff check --fix *.py tests/
+	uv run ruff format *.py tests/
 	@echo "Running pyright type checker.."
 	uv run pyright
 	@echo "Running pylint.."

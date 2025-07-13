@@ -5,7 +5,6 @@ import pytest
 from application.models import (
     Customer,
     Invoice,
-    InvoiceDetails,
     InvoiceItem,
     LineItem,
     Vendor,
@@ -15,7 +14,6 @@ from tests.unit.test_helpers import (
     check_from_dict_method,
     create_test_customer,
     create_test_invoice,
-    temp_db,
 )
 
 

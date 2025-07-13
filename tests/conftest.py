@@ -1,9 +1,13 @@
 """Pytest configuration and fixtures for invoice generator tests."""
 
+import os
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
+
+from application.db import close_db, init_db
 
 
 @pytest.fixture(scope="session")
@@ -73,3 +77,13 @@ def invoice_generator():
         return result, expected_html, expected_pdf
 
     return _generate
+
+
+@pytest.fixture
+def temp_db():
+    """Create a temporary database for testing."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        db_path = os.path.join(tmp_dir, "test.db")
+        init_db(db_path)
+        yield db_path
+        close_db()

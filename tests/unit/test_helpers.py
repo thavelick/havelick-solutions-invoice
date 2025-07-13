@@ -1,12 +1,8 @@
 """Shared test helpers to reduce redundancy across test files."""
 
-import os
-import tempfile
 from typing import Any, Dict, Type
 
 import pytest
-
-from application.db import close_db, init_db
 
 
 def check_from_dict_method(
@@ -41,16 +37,6 @@ def check_from_dict_method(
 
 
 # This is a helper function, not a test - remove the test_ prefix to prevent pytest from running it
-
-
-@pytest.fixture
-def temp_db():
-    """Create a temporary database for testing."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        db_path = os.path.join(tmp_dir, "test.db")
-        init_db(db_path)
-        yield db_path
-        close_db()
 
 
 def create_test_customer(name: str = "Test Company", address: str = "123 Test St"):

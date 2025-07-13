@@ -11,9 +11,9 @@ def test_invoice_generation_and_content(
         test_data_files["client"], test_data_files["invoice_data"], tmp_path
     )
 
-    assert (
-        result.returncode == 0
-    ), f"Invoice generation failed: {result.stderr}\nStdout: {result.stdout}"
+    assert result.returncode == 0, (
+        f"Invoice generation failed: {result.stderr}\nStdout: {result.stdout}"
+    )
 
     assert html_file.exists(), f"Expected HTML file not found: {html_file}"
     assert pdf_file.exists(), f"Expected PDF file not found: {pdf_file}"
@@ -21,11 +21,11 @@ def test_invoice_generation_and_content(
     page.goto(f"file://{html_file.absolute()}")
 
     page_content = page.content().lower()
-    assert (
-        "invoice" in page_content
-    ), "Generated HTML does not contain the word 'invoice'"
+    assert "invoice" in page_content, (
+        "Generated HTML does not contain the word 'invoice'"
+    )
 
     assert "acme corp" in page_content, "Client name not found in generated invoice"
-    assert (
-        "software development work" in page_content
-    ), "Invoice item not found in generated invoice"
+    assert "software development work" in page_content, (
+        "Invoice item not found in generated invoice"
+    )
