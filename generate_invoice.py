@@ -9,11 +9,12 @@ import argparse
 import json
 import os
 import sys
+from importlib import resources
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment
 from weasyprint import HTML
 
-from application import db
+from application import db, templates
 from application.models import (
     Customer,
     Invoice,
@@ -167,11 +168,23 @@ def generate_invoice_metadata(invoice_data_file):
         raise ValueError(f"Error generating invoice metadata: {e}") from e
 
 
-def generate_invoice_files(data, output_dir="."):
-    """Generate HTML and PDF invoice files from data."""
+def generate_invoice_files(data, output_dir=".", output_handler=None):
+    """Generate HTML and PDF invoice files from data.
+
+    Args:
+        data: Invoice data dictionary
+        output_dir: Directory to write files to
+        output_handler: Optional callable for handling output messages (defaults to print)
+    """
+    if output_handler is None:
+        output_handler = print
+
+    # Load template from package resources
+    template_content = resources.read_text(templates, "invoice_template.html")
+
     # Setup Jinja2 environment
-    env = Environment(loader=FileSystemLoader("."))
-    template = env.get_template("invoice_template.html")
+    env = Environment()
+    template = env.from_string(template_content)
 
     # Render template
     html_output = template.render(**data)
@@ -198,7 +211,7 @@ def generate_invoice_files(data, output_dir="."):
     # Generate PDF from HTML
     HTML(filename=html_filename).write_pdf(pdf_filename)
 
-    print(
+    output_handler(
         f"Invoice generated: {html_filename} and {pdf_filename} (Total: ${data['total']:.2f})"
     )
 
