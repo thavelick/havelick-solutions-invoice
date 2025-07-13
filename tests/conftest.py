@@ -87,3 +87,64 @@ def temp_db():
         init_db(db_path)
         yield db_path
         close_db()
+
+
+@pytest.fixture
+def create_test_customer():
+    """Fixture to create test customers."""
+
+    def _create_customer(name: str = "Test Company", address: str = "123 Test St"):
+        from application.models import Customer
+
+        return Customer.create(name, address)
+
+    return _create_customer
+
+
+@pytest.fixture
+def create_test_invoice():
+    """Fixture to create test invoices."""
+
+    def _create_invoice(
+        customer_id: int,
+        invoice_number: str = "2025.03.15",
+        total_amount: float = 1000.0,
+    ):
+        from application.models import Invoice, InvoiceDetails, parse_date_safely
+
+        details = InvoiceDetails(
+            invoice_number=invoice_number,
+            customer_id=customer_id,
+            invoice_date=parse_date_safely("03/15/2025"),
+            due_date=parse_date_safely("04/14/2025"),
+            total_amount=total_amount,
+        )
+        return Invoice.create(details)
+
+    return _create_invoice
+
+
+@pytest.fixture
+def create_test_invoice_item():
+    """Fixture to create test invoice items."""
+
+    def _create_invoice_item(
+        invoice_id: int,
+        description: str = "Test Work",
+        quantity: float = 8.0,
+        rate: float = 150.0,
+    ):
+        from application.models import InvoiceItem, LineItem, parse_date_safely
+
+        line_item = LineItem(
+            invoice_id=invoice_id,
+            work_date=parse_date_safely("03/15/2025"),
+            description=description,
+            quantity=quantity,
+            rate=rate,
+            amount=quantity * rate,
+        )
+        InvoiceItem.add(line_item)
+        return line_item
+
+    return _create_invoice_item
