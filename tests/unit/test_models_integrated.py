@@ -10,17 +10,12 @@ from application.models import (
     Vendor,
     parse_date_safely,
 )
-from tests.unit.test_helpers import (
-    check_from_dict_method,
-    create_test_customer,
-    create_test_invoice,
-)
 
 
 class TestModelFromDict:
-    """Test from_dict methods for all models using shared helper."""
+    """Test from_dict methods for all models using tool fixture."""
 
-    def test_customer_from_dict(self):
+    def test_customer_from_dict(self, from_dict_checker):
         """Test Customer.from_dict method."""
         valid_record = {
             "id": 1,
@@ -28,11 +23,9 @@ class TestModelFromDict:
             "address": "123 Test St",
             "created_at": "2025-01-01 00:00:00",
         }
-        check_from_dict_method(
-            Customer, valid_record, ["name", "address", "created_at"]
-        )
+        from_dict_checker(Customer, valid_record, ["name", "address", "created_at"])
 
-    def test_invoice_from_dict(self):
+    def test_invoice_from_dict(self, from_dict_checker):
         """Test Invoice.from_dict method."""
         valid_record = {
             "id": 1,
@@ -44,13 +37,13 @@ class TestModelFromDict:
             "total_amount": 1200.0,
             "created_at": "2025-03-15 10:30:00",
         }
-        check_from_dict_method(
+        from_dict_checker(
             Invoice,
             valid_record,
             ["customer_id", "vendor_id", "invoice_number", "created_at"],
         )
 
-    def test_invoice_item_from_dict(self):
+    def test_invoice_item_from_dict(self, from_dict_checker):
         """Test InvoiceItem.from_dict method."""
         valid_record = {
             "id": 1,
@@ -61,13 +54,13 @@ class TestModelFromDict:
             "rate": 150.0,
             "amount": 1200.0,
         }
-        check_from_dict_method(
+        from_dict_checker(
             InvoiceItem,
             valid_record,
             ["invoice_id", "work_date", "description", "quantity", "rate", "amount"],
         )
 
-    def test_vendor_from_dict(self):
+    def test_vendor_from_dict(self, from_dict_checker):
         """Test Vendor.from_dict method."""
         valid_record = {
             "id": 1,
@@ -77,7 +70,7 @@ class TestModelFromDict:
             "phone": "303-475-7244",
             "created_at": "2025-01-01 00:00:00",
         }
-        check_from_dict_method(
+        from_dict_checker(
             Vendor, valid_record, ["name", "address", "email", "phone", "created_at"]
         )
 
@@ -156,7 +149,7 @@ class TestCustomerOperations:
 class TestInvoiceOperations:
     """Test Invoice model operations."""
 
-    def test_create_invoice(self, temp_db):
+    def test_create_invoice(self, temp_db, create_test_customer, create_test_invoice):
         """Test creating an invoice."""
         customer_id = create_test_customer()
         invoice_id = create_test_invoice(customer_id)
@@ -164,7 +157,7 @@ class TestInvoiceOperations:
         assert isinstance(invoice_id, int)
         assert invoice_id > 0
 
-    def test_get_invoice_data(self, temp_db):
+    def test_get_invoice_data(self, temp_db, create_test_customer, create_test_invoice):
         """Test getting invoice data."""
         customer_id = create_test_customer("Test Company", "123 Test St")
         invoice_id = create_test_invoice(customer_id, "2025.03.15", 1200.0)
@@ -181,7 +174,9 @@ class TestInvoiceOperations:
         invoice_data = Invoice.get_data(99999)
         assert invoice_data is None
 
-    def test_invoice_unique_number_constraint(self, temp_db):
+    def test_invoice_unique_number_constraint(
+        self, temp_db, create_test_customer, create_test_invoice
+    ):
         """Test that duplicate invoice numbers are rejected."""
         customer_id = create_test_customer()
 
@@ -193,7 +188,7 @@ class TestInvoiceOperations:
         with pytest.raises(Exception):
             create_test_invoice(customer_id, "2025.03.15")
 
-    def test_invoice_list_all(self, temp_db):
+    def test_invoice_list_all(self, temp_db, create_test_customer, create_test_invoice):
         """Test listing all invoices."""
         customer_id = create_test_customer()
         create_test_invoice(customer_id, "2025.03.15", 1000.0)
@@ -206,7 +201,9 @@ class TestInvoiceOperations:
         assert "2025.03.15" in invoice_numbers
         assert "2025.03.16" in invoice_numbers
 
-    def test_invoice_list_by_customer(self, temp_db):
+    def test_invoice_list_by_customer(
+        self, temp_db, create_test_customer, create_test_invoice
+    ):
         """Test listing invoices for specific customer."""
         customer1_id = create_test_customer("Customer 1", "123 St")
         customer2_id = create_test_customer("Customer 2", "456 St")
@@ -222,7 +219,7 @@ class TestInvoiceOperations:
 class TestInvoiceItemOperations:
     """Test InvoiceItem model operations."""
 
-    def test_add_invoice_item(self, temp_db):
+    def test_add_invoice_item(self, temp_db, create_test_customer, create_test_invoice):
         """Test adding an invoice item."""
         customer_id = create_test_customer()
         invoice_id = create_test_invoice(customer_id)
@@ -247,7 +244,9 @@ class TestInvoiceItemOperations:
         assert invoice_data["items"][0]["rate"] == 150.0
         assert invoice_data["items"][0]["amount"] == 1200.0
 
-    def test_add_multiple_invoice_items(self, temp_db):
+    def test_add_multiple_invoice_items(
+        self, temp_db, create_test_customer, create_test_invoice
+    ):
         """Test adding multiple invoice items."""
         customer_id = create_test_customer()
         invoice_id = create_test_invoice(customer_id)
@@ -281,7 +280,9 @@ class TestInvoiceItemOperations:
         assert invoice_data["items"][0]["description"] == "Work 1"
         assert invoice_data["items"][1]["description"] == "Work 2"
 
-    def test_add_item_with_zero_amount(self, temp_db):
+    def test_add_item_with_zero_amount(
+        self, temp_db, create_test_customer, create_test_invoice
+    ):
         """Test adding item with zero amount."""
         customer_id = create_test_customer()
         invoice_id = create_test_invoice(customer_id)

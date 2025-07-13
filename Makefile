@@ -23,8 +23,8 @@ setup: # Setup project
 
 lint: # Run linters (ruff, pyright, pylint)
 	@echo "Running ruff formatter and linter.."
-	uv run ruff check --fix *.py tests/
-	uv run ruff format *.py tests/
+	uv run ruff check --fix
+	uv run ruff format
 	@echo "Running pyright type checker.."
 	uv run pyright
 	@echo "Running pylint.."
