@@ -7,8 +7,7 @@ Run `make` or `make help` to see all available commands. This project uses a Mak
 
 ### 2. Linting Requirements
 **Always run `make lint` before any commits.** This ensures code quality and consistency by running:
-- isort (import sorting)
-- black (code formatting)
+- ruff (linting and formatting)
 - pyright (type checking)
 - pylint (code quality)
 
@@ -31,10 +30,10 @@ Run `make` or `make help` to see all available commands. This project uses a Mak
 - When we merge via gh, it deletes the branch on remote AND LOCAL and checks out main for us
 
 ### 4. Code Quality Standards
-- Maintain a high pylint score (currently 9.89/10)
+- Maintain a high pylint score (currently 10.00/10)
 - All Python files should specify UTF-8 encoding when opening files
-- Follow PEP 8 style guidelines (enforced by black)
-- Keep imports properly ordered (standard library, then third-party)
+- Follow PEP 8 style guidelines (enforced by ruff)
+- Keep imports properly ordered (enforced by ruff)
 
 ### 5. Pre-Commit Checklist
 Before any commit:
