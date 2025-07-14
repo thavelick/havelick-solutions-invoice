@@ -45,7 +45,7 @@ class GenerationController:
             .replace(",", "")
             .replace(".", "")
         )
-        invoice_date = data["invoice_date"].replace("/", ".")
+        invoice_date = str(data["invoice_date"]).replace("-", ".").replace("/", ".")
         base_filename = f"{company_name}-invoice-{invoice_date}"
 
         # Create full paths using output directory
