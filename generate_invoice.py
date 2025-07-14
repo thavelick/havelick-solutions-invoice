@@ -15,7 +15,7 @@ from application.controllers.customer_controller import CustomerController
 from application.controllers.generation_controller import GenerationController
 from application.controllers.invoice_controller import InvoiceController
 from application.invoice_parser import parse_invoice_data
-from application.models import Customer
+from application.models import Customer, generate_invoice_metadata_from_filename
 
 # Company data (static)
 COMPANY_DATA = {
@@ -45,16 +45,6 @@ def load_invoice_items(filepath):
         raise ValueError(f"Error loading invoice items: {e}") from e
 
 
-def generate_invoice_metadata(invoice_data_file):
-    """Generate invoice number and dates from filename."""
-    return GenerationController.generate_metadata_from_filename(invoice_data_file)
-
-
-def generate_invoice_files(data, output_dir=".", output_handler=None):
-    """Generate HTML and PDF invoice files from data."""
-    return GenerationController.generate_invoice_files(data, output_dir, output_handler)
-
-
 def legacy_main(client_file, invoice_data_file, output_dir, db_path="invoices.db"):
     """Legacy main function for backward compatibility."""
     try:
@@ -64,7 +54,7 @@ def legacy_main(client_file, invoice_data_file, output_dir, db_path="invoices.db
         # Load data using helper functions
         client_data = load_client_data(client_file)
         items = load_invoice_items(invoice_data_file)
-        invoice_metadata = generate_invoice_metadata(invoice_data_file)
+        invoice_metadata = generate_invoice_metadata_from_filename(invoice_data_file)
 
         # Import customer to database
         customer_id = CustomerController.import_customer_from_json(client_data)
@@ -84,7 +74,7 @@ def legacy_main(client_file, invoice_data_file, output_dir, db_path="invoices.db
         }
 
         # Generate output files
-        generate_invoice_files(data, output_dir)
+        GenerationController.generate_invoice_files(data, output_dir)
     except (ValueError, FileNotFoundError, IOError) as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -143,7 +133,7 @@ def cmd_generate_invoice(args):
         sys.exit(1)
 
     # Generate output files
-    generate_invoice_files(invoice_data, args.output_dir)
+    GenerationController.generate_invoice_files(invoice_data, args.output_dir)
 
 
 def cmd_list_customers(args):

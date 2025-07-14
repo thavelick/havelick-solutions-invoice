@@ -8,19 +8,10 @@ from jinja2 import Environment
 from weasyprint import HTML
 
 from .. import templates
-from ..models import generate_invoice_metadata_from_filename
 
 
 class GenerationController:
     """Controller for invoice generation operations."""
-
-    @staticmethod
-    def generate_metadata_from_filename(filename: str) -> Dict[str, str]:
-        """Generate invoice number and dates from filename."""
-        try:
-            return generate_invoice_metadata_from_filename(filename)
-        except ValueError as e:
-            raise ValueError(f"Error generating invoice metadata: {e}") from e
 
     @staticmethod
     def generate_invoice_files(

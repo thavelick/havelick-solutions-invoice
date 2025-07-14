@@ -2,8 +2,6 @@
 
 import pytest
 
-from application.controllers.customer_controller import CustomerController
-from application.controllers.invoice_controller import InvoiceController
 from application.models import (
     Customer,
     Invoice,
@@ -131,22 +129,6 @@ class TestCustomerOperations:
         assert customers[0].name == "Company A"  # Ordered by name
         assert customers[1].name == "Company B"
 
-    def test_customer_import_from_json(self, temp_db):
-        """Test importing customer from JSON data."""
-        json_data = {
-            "client": {
-                "name": "JSON Company",
-                "address": "123 JSON St",
-            }
-        }
-
-        customer_id = CustomerController.import_customer_from_json(json_data)
-        assert customer_id > 0
-
-        customer = Customer.get_by_name("JSON Company")
-        assert customer is not None
-        assert customer.address == "123 JSON St"
-
 
 class TestInvoiceOperations:
     """Test Invoice model operations."""
@@ -158,23 +140,6 @@ class TestInvoiceOperations:
 
         assert isinstance(invoice_id, int)
         assert invoice_id > 0
-
-    def test_get_invoice_data(self, temp_db, create_test_customer, create_test_invoice):
-        """Test getting invoice data."""
-        customer_id = create_test_customer("Test Company", "123 Test St")
-        invoice_id = create_test_invoice(customer_id, "2025.03.15", 1200.0)
-
-        invoice_data = InvoiceController.get_invoice_data(invoice_id)
-        assert invoice_data is not None
-        assert invoice_data["invoice_number"] == "2025.03.15"
-        assert invoice_data["total"] == 1200.0
-        assert invoice_data["client"]["name"] == "Test Company"
-        assert invoice_data["company"]["name"] == "Havelick Software Solutions, LLC"
-
-    def test_get_nonexistent_invoice(self, temp_db):
-        """Test getting nonexistent invoice returns None."""
-        invoice_data = InvoiceController.get_invoice_data(99999)
-        assert invoice_data is None
 
     def test_invoice_unique_number_constraint(
         self, temp_db, create_test_customer, create_test_invoice
@@ -237,14 +202,21 @@ class TestInvoiceItemOperations:
 
         InvoiceItem.add(line_item)
 
-        # Verify item was added by checking invoice data
-        invoice_data = InvoiceController.get_invoice_data(invoice_id)
-        assert invoice_data is not None
-        assert len(invoice_data["items"]) == 1
-        assert invoice_data["items"][0]["description"] == "Test work"
-        assert invoice_data["items"][0]["quantity"] == 8.0
-        assert invoice_data["items"][0]["rate"] == 150.0
-        assert invoice_data["items"][0]["amount"] == 1200.0
+        # Verify item was added by checking database directly
+        from application import db
+
+        connection = db.get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT * FROM invoice_items WHERE invoice_id = ?", (invoice_id,)
+        )
+        items = cursor.fetchall()
+
+        assert len(items) == 1
+        assert items[0]["description"] == "Test work"
+        assert items[0]["quantity"] == 8.0
+        assert items[0]["rate"] == 150.0
+        assert items[0]["amount"] == 1200.0
 
     def test_add_multiple_invoice_items(
         self, temp_db, create_test_customer, create_test_invoice
@@ -276,11 +248,19 @@ class TestInvoiceItemOperations:
         InvoiceItem.add(item2)
 
         # Verify both items were added
-        invoice_data = InvoiceController.get_invoice_data(invoice_id)
-        assert invoice_data is not None
-        assert len(invoice_data["items"]) == 2
-        assert invoice_data["items"][0]["description"] == "Work 1"
-        assert invoice_data["items"][1]["description"] == "Work 2"
+        from application import db
+
+        connection = db.get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY work_date",
+            (invoice_id,),
+        )
+        items = cursor.fetchall()
+
+        assert len(items) == 2
+        assert items[0]["description"] == "Work 1"  # Earlier date
+        assert items[1]["description"] == "Work 2"  # Later date
 
     def test_add_item_with_zero_amount(
         self, temp_db, create_test_customer, create_test_invoice
@@ -300,8 +280,16 @@ class TestInvoiceItemOperations:
 
         InvoiceItem.add(line_item)
 
-        invoice_data = InvoiceController.get_invoice_data(invoice_id)
-        assert invoice_data is not None
-        assert len(invoice_data["items"]) == 1
-        assert invoice_data["items"][0]["rate"] == 0.0
-        assert invoice_data["items"][0]["amount"] == 0.0
+        # Verify item was added with zero amount
+        from application import db
+
+        connection = db.get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT * FROM invoice_items WHERE invoice_id = ?", (invoice_id,)
+        )
+        items = cursor.fetchall()
+
+        assert len(items) == 1
+        assert items[0]["rate"] == 0.0
+        assert items[0]["amount"] == 0.0

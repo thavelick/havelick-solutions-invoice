@@ -1,4 +1,4 @@
-"""Unit tests for invoice import functionality."""
+"""Unit tests for invoice controller functionality."""
 
 import os
 import tempfile
@@ -313,3 +313,60 @@ class TestImportInvoiceFromFiles:
         assert invoice_data["items"][0]["description"] == "Earlier Work"
         assert invoice_data["items"][1]["description"] == "Middle Work"
         assert invoice_data["items"][2]["description"] == "Later Work"
+
+
+class TestInvoiceDataRetrieval:
+    """Test cases for invoice data retrieval functionality."""
+
+    @pytest.fixture
+    def test_db(self):
+        """Create a temporary database for testing."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = os.path.join(tmp_dir, "test.db")
+            init_db(db_path)
+            yield db_path
+            close_db()
+
+    @pytest.fixture
+    def create_test_customer(self, test_db):
+        """Fixture to create test customers."""
+
+        def _create_customer(name, address):
+            return Customer.create(name, address)
+
+        return _create_customer
+
+    @pytest.fixture
+    def create_test_invoice(self, test_db):
+        """Fixture to create test invoices."""
+
+        def _create_invoice(customer_id, invoice_number, total_amount):
+            from application.models import Invoice, InvoiceDetails
+
+            details = InvoiceDetails(
+                invoice_number=invoice_number,
+                customer_id=customer_id,
+                invoice_date="2025-03-15",
+                due_date="2025-04-14",
+                total_amount=total_amount,
+            )
+            return Invoice.create(details)
+
+        return _create_invoice
+
+    def test_get_invoice_data(self, test_db, create_test_customer, create_test_invoice):
+        """Test getting invoice data."""
+        customer_id = create_test_customer("Test Company", "123 Test St")
+        invoice_id = create_test_invoice(customer_id, "2025.03.15", 1200.0)
+
+        invoice_data = InvoiceController.get_invoice_data(invoice_id)
+        assert invoice_data is not None
+        assert invoice_data["invoice_number"] == "2025.03.15"
+        assert invoice_data["total"] == 1200.0
+        assert invoice_data["client"]["name"] == "Test Company"
+        assert invoice_data["company"]["name"] == "Havelick Software Solutions, LLC"
+
+    def test_get_nonexistent_invoice(self, test_db):
+        """Test getting nonexistent invoice returns None."""
+        invoice_data = InvoiceController.get_invoice_data(99999)
+        assert invoice_data is None
