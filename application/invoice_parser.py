@@ -2,7 +2,8 @@
 
 import os
 
-from .models import parse_date_to_display, validate_amount
+from .amount_utils import validate_amount
+from .date_utils import parse_date_to_display
 
 
 def _parse_invoice_line(line):

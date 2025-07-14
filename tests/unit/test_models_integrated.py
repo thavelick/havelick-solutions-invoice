@@ -8,8 +8,8 @@ from application.models import (
     InvoiceItem,
     LineItem,
     Vendor,
-    parse_date_safely,
 )
+from application.date_utils import parse_date_safely
 
 
 class TestModelFromDict:

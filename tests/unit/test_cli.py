@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from application.models import generate_invoice_metadata_from_filename
+from application.controllers.invoice_controller import InvoiceController
 from generate_invoice import (
     load_client_data,
     load_invoice_items,
@@ -65,26 +65,34 @@ class TestGenerateInvoiceMetadata:
 
     def test_generate_metadata_valid_filename(self):
         """Test metadata generation from valid filenames."""
-        result = generate_invoice_metadata_from_filename("invoice-data-3-15.txt")
+        result = InvoiceController.generate_invoice_metadata_from_filename(
+            "invoice-data-3-15.txt"
+        )
         assert result["invoice_number"] == "2025.03.15"
         assert result["invoice_date"] == "03/15/2025"
         assert "due_date" in result
 
-        result = generate_invoice_metadata_from_filename("invoice-data-12-31.txt")
+        result = InvoiceController.generate_invoice_metadata_from_filename(
+            "invoice-data-12-31.txt"
+        )
         assert result["invoice_number"] == "2025.12.31"
         assert result["invoice_date"] == "12/31/2025"
 
     def test_generate_metadata_invalid_filename(self):
         """Test metadata generation from invalid filename format."""
         # This should still work but use fallback logic
-        result = generate_invoice_metadata_from_filename("invalid-filename.txt")
+        result = InvoiceController.generate_invoice_metadata_from_filename(
+            "invalid-filename.txt"
+        )
         assert "invoice_number" in result
         assert "invoice_date" in result
         assert "due_date" in result
 
     def test_generate_metadata_fallback_filename(self):
         """Test metadata generation with fallback for non-standard filenames."""
-        result = generate_invoice_metadata_from_filename("some-other-file.txt")
+        result = InvoiceController.generate_invoice_metadata_from_filename(
+            "some-other-file.txt"
+        )
         assert "invoice_number" in result
         assert "invoice_date" in result
         assert "due_date" in result

@@ -110,7 +110,8 @@ def create_test_invoice():
         invoice_number: str = "2025.03.15",
         total_amount: float = 1000.0,
     ):
-        from application.models import Invoice, InvoiceDetails, parse_date_safely
+        from application.models import Invoice, InvoiceDetails
+        from application.date_utils import parse_date_safely
 
         details = InvoiceDetails(
             invoice_number=invoice_number,
@@ -134,7 +135,8 @@ def create_test_invoice_item():
         quantity: float = 8.0,
         rate: float = 150.0,
     ):
-        from application.models import InvoiceItem, LineItem, parse_date_safely
+        from application.models import InvoiceItem, LineItem
+        from application.date_utils import parse_date_safely
 
         line_item = LineItem(
             invoice_id=invoice_id,

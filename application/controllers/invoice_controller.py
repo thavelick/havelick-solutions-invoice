@@ -8,9 +8,8 @@ from ..models import (
     InvoiceDetails,
     InvoiceItem,
     LineItem,
-    generate_invoice_metadata_from_filename,
-    parse_date_safely,
 )
+from ..date_utils import calculate_due_date, parse_date_safely
 
 
 class InvoiceController:
@@ -68,7 +67,9 @@ class InvoiceController:
         """Import invoice from TSV file data."""
         try:
             # Generate invoice metadata from filename
-            metadata = generate_invoice_metadata_from_filename(invoice_data_file)
+            metadata = InvoiceController.generate_invoice_metadata_from_filename(
+                invoice_data_file
+            )
 
             # Create the invoice
             return InvoiceController.create_invoice(customer_id, metadata, items)
@@ -87,65 +88,48 @@ class InvoiceController:
     @staticmethod
     def get_invoice_data(invoice_id: int) -> Optional[Dict[str, Any]]:
         """Get complete invoice data including customer, vendor, and items."""
-        from .. import db
-
-        connection = db.get_db_connection()
-        cursor = connection.cursor()
-
-        # Get invoice with customer and vendor data
-        cursor.execute(
-            """SELECT i.invoice_number, i.invoice_date, i.due_date, i.total_amount,
-                      c.name as customer_name, c.address as customer_address, 
-                      v.name as vendor_name, v.address as vendor_address,
-                      v.email as vendor_email, v.phone as vendor_phone
-               FROM invoices i
-               JOIN customers c ON i.customer_id = c.id
-               JOIN vendors v ON i.vendor_id = v.id
-               WHERE i.id = ?""",
-            (invoice_id,),
-        )
-
-        invoice_row = cursor.fetchone()
-        if not invoice_row:
-            return None
-
-        # Get invoice items
-        cursor.execute(
-            """SELECT work_date, description, quantity, rate, amount
-               FROM invoice_items
-               WHERE invoice_id = ?
-               ORDER BY work_date""",
-            (invoice_id,),
-        )
-
-        items = [
-            {
-                "date": row[0],
-                "description": row[1],
-                "quantity": row[2],
-                "rate": row[3],
-                "amount": row[4],
-            }
-            for row in cursor.fetchall()
-        ]
-
-        return {
-            "invoice_number": invoice_row[0],
-            "invoice_date": invoice_row[1],
-            "due_date": invoice_row[2],
-            "total": invoice_row[3],
-            "company": {
-                "name": invoice_row[6],
-                "address": invoice_row[7],
-                "email": invoice_row[8],
-                "phone": invoice_row[9],
-            },
-            "client": {"name": invoice_row[4], "address": invoice_row[5]},
-            "payment_terms": "Net 30 days",
-            "items": items,
-        }
+        return Invoice.get_complete_data(invoice_id)
 
     @staticmethod
     def list_invoices(customer_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """List invoices, optionally filtered by customer."""
         return Invoice.list_all(customer_id)
+
+    @staticmethod
+    def generate_invoice_metadata_from_filename(
+        invoice_data_file: str,
+    ) -> Dict[str, str]:
+        """Generate invoice number and dates from filename."""
+        import os
+        from datetime import datetime
+
+        try:
+            # Generate invoice metadata from filename
+            base_name = os.path.splitext(os.path.basename(invoice_data_file))[0]
+            if base_name.startswith("invoice-data-"):
+                date_part = base_name.replace("invoice-data-", "")
+                try:
+                    month, day = date_part.split("-")
+                    invoice_number = f"2025.{month.zfill(2)}.{day.zfill(2)}"
+                    invoice_date = f"{month.zfill(2)}/{day.zfill(2)}/2025"
+                    # Calculate due date 30 days out
+                    due_date = calculate_due_date(invoice_date, 30)
+                except ValueError as e:
+                    raise ValueError(
+                        f"Invalid filename format: {invoice_data_file}. "
+                        f"Expected format: invoice-data-M-D.txt"
+                    ) from e
+            else:
+                # Fallback to current date
+                now = datetime.now()
+                invoice_number = f"2025.{now.month:02d}.{now.day:02d}"
+                invoice_date = now.strftime("%m/%d/%Y")
+                due_date = calculate_due_date(invoice_date, 30)
+
+            return {
+                "invoice_number": invoice_number,
+                "invoice_date": invoice_date,
+                "due_date": due_date,
+            }
+        except (ValueError, IndexError) as e:
+            raise ValueError(f"Error generating invoice metadata: {e}") from e

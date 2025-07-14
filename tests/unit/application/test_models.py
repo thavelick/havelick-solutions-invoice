@@ -2,13 +2,13 @@
 
 import pytest
 
-from application.models import (
+from application.controllers.invoice_controller import InvoiceController
+from application.date_utils import (
     calculate_due_date,
-    generate_invoice_metadata_from_filename,
     parse_date_safely,
     parse_date_to_display,
-    validate_amount,
 )
+from application.amount_utils import validate_amount
 
 
 class TestValidateAmount:
@@ -75,12 +75,16 @@ class TestGenerateInvoiceMetadataFromFilename:
 
     def test_generate_metadata_valid_filenames(self):
         """Test generating metadata from valid filenames."""
-        result = generate_invoice_metadata_from_filename("invoice-data-3-15.txt")
+        result = InvoiceController.generate_invoice_metadata_from_filename(
+            "invoice-data-3-15.txt"
+        )
         assert result["invoice_number"] == "2025.03.15"
         assert result["invoice_date"] == "03/15/2025"
         assert result["due_date"] == "04/14/2025"  # 30 days after 03/15/2025
 
-        result = generate_invoice_metadata_from_filename("invoice-data-12-31.txt")
+        result = InvoiceController.generate_invoice_metadata_from_filename(
+            "invoice-data-12-31.txt"
+        )
         assert result["invoice_number"] == "2025.12.31"
         assert result["invoice_date"] == "12/31/2025"
         assert result["due_date"] == "01/30/2026"  # 30 days after 12/31/2025
@@ -88,11 +92,15 @@ class TestGenerateInvoiceMetadataFromFilename:
     def test_generate_metadata_invalid_filename(self):
         """Test generating metadata from invalid filename."""
         with pytest.raises(ValueError, match="Invalid filename format"):
-            generate_invoice_metadata_from_filename("invoice-data-invalid.txt")
+            InvoiceController.generate_invoice_metadata_from_filename(
+                "invoice-data-invalid.txt"
+            )
 
     def test_generate_metadata_fallback_filename(self):
         """Test generating metadata from non-standard filename."""
-        result = generate_invoice_metadata_from_filename("some-other-file.txt")
+        result = InvoiceController.generate_invoice_metadata_from_filename(
+            "some-other-file.txt"
+        )
 
         # Should contain all required keys
         assert "invoice_number" in result
@@ -127,9 +135,9 @@ class TestCalculateDueDate:
 
     def test_calculate_due_date_invalid_date(self):
         """Test calculating due date with invalid date."""
-        with pytest.raises(ValueError, match="Invalid invoice date format"):
+        with pytest.raises(ValueError, match="Invalid invoice date"):
             calculate_due_date("2025-03-15")
-        with pytest.raises(ValueError, match="Invalid invoice date format"):
+        with pytest.raises(ValueError, match="Invalid invoice date"):
             calculate_due_date("13/45/2025")
-        with pytest.raises(ValueError, match="Invalid invoice date format"):
+        with pytest.raises(ValueError, match="Invalid invoice date"):
             calculate_due_date("")

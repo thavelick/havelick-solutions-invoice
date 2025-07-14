@@ -15,7 +15,6 @@ from application.controllers.customer_controller import CustomerController
 from application.controllers.generation_controller import GenerationController
 from application.controllers.invoice_controller import InvoiceController
 from application.invoice_parser import parse_invoice_data
-from application.models import Customer, generate_invoice_metadata_from_filename
 
 # Company data (static)
 COMPANY_DATA = {
@@ -54,7 +53,9 @@ def legacy_main(client_file, invoice_data_file, output_dir, db_path="invoices.db
         # Load data using helper functions
         client_data = load_client_data(client_file)
         items = load_invoice_items(invoice_data_file)
-        invoice_metadata = generate_invoice_metadata_from_filename(invoice_data_file)
+        invoice_metadata = InvoiceController.generate_invoice_metadata_from_filename(
+            invoice_data_file
+        )
 
         # Import customer to database
         customer_id = CustomerController.import_customer_from_json(client_data)
@@ -107,7 +108,7 @@ def cmd_import_customer(args):
 
     # Load customer data to get name for display
     client_data = load_client_data(args.file)
-    customer = Customer.get_by_name(client_data["client"]["name"])
+    customer = CustomerController.get_customer_by_name(client_data["client"]["name"])
     if customer is None:
         raise ValueError(f"Failed to find customer: {client_data['client']['name']}")
     print(f"Imported customer: {customer.name} (ID: {customer_id})")

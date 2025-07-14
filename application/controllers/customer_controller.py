@@ -1,6 +1,6 @@
 """Customer controller for handling customer business logic."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ..client_parser import parse_client_data
 from ..models import Customer
@@ -33,3 +33,8 @@ class CustomerController:
     def list_customers() -> List[Customer]:
         """List all customers."""
         return Customer.list_all()
+
+    @staticmethod
+    def get_customer_by_name(name: str) -> Optional[Customer]:
+        """Get customer by name."""
+        return Customer.get_by_name(name)
