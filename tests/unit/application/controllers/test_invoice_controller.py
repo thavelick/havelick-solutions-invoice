@@ -1,4 +1,4 @@
-"""Unit tests for import_invoice_from_files function."""
+"""Unit tests for invoice controller functionality."""
 
 import os
 import tempfile
@@ -6,12 +6,13 @@ from datetime import date
 
 import pytest
 
+from application.controllers.invoice_controller import InvoiceController
 from application.db import close_db, init_db
-from application.models import Customer, Invoice, import_invoice_from_files
+from application.models import Customer
 
 
 class TestImportInvoiceFromFiles:
-    """Test cases for import_invoice_from_files function."""
+    """Test cases for invoice import functionality."""
 
     @pytest.fixture
     def test_db(self):
@@ -49,7 +50,7 @@ class TestImportInvoiceFromFiles:
         """Test importing a valid invoice with multiple items."""
         filename = "invoice-data-3-15.txt"
 
-        invoice_id = import_invoice_from_files(
+        invoice_id = InvoiceController.import_invoice_from_files(
             customer_id=sample_customer, invoice_data_file=filename, items=sample_items
         )
 
@@ -57,7 +58,7 @@ class TestImportInvoiceFromFiles:
         assert invoice_id > 0
 
         # Verify invoice was created with correct metadata
-        invoice_data = Invoice.get_data(invoice_id)
+        invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
         assert invoice_data["invoice_number"] == "2025.03.15"
         assert invoice_data["invoice_date"] == date(2025, 3, 15)
@@ -83,14 +84,14 @@ class TestImportInvoiceFromFiles:
             }
         ]
 
-        invoice_id = import_invoice_from_files(
+        invoice_id = InvoiceController.import_invoice_from_files(
             customer_id=sample_customer, invoice_data_file=filename, items=items
         )
 
         assert invoice_id > 0
 
         # Verify invoice metadata from filename
-        invoice_data = Invoice.get_data(invoice_id)
+        invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
         assert invoice_data["invoice_number"] == "2025.12.25"
         assert invoice_data["invoice_date"] == date(2025, 12, 25)
@@ -118,13 +119,13 @@ class TestImportInvoiceFromFiles:
             },
         ]
 
-        invoice_id = import_invoice_from_files(
+        invoice_id = InvoiceController.import_invoice_from_files(
             customer_id=sample_customer, invoice_data_file=filename, items=items
         )
 
         assert invoice_id > 0
 
-        invoice_data = Invoice.get_data(invoice_id)
+        invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
         assert invoice_data["total"] == 588.75  # 2.5*175.50 + 0.5*300.0
 
@@ -145,22 +146,22 @@ class TestImportInvoiceFromFiles:
         ]
 
         # Test single digit month and day
-        invoice_id1 = import_invoice_from_files(
+        invoice_id1 = InvoiceController.import_invoice_from_files(
             customer_id=sample_customer,
             invoice_data_file="invoice-data-5-5.txt",
             items=items,
         )
-        invoice_data1 = Invoice.get_data(invoice_id1)
+        invoice_data1 = InvoiceController.get_invoice_data(invoice_id1)
         assert invoice_data1 is not None
         assert invoice_data1["invoice_number"] == "2025.05.05"
 
         # Test double digit month and day
-        invoice_id2 = import_invoice_from_files(
+        invoice_id2 = InvoiceController.import_invoice_from_files(
             customer_id=sample_customer,
             invoice_data_file="invoice-data-12-31.txt",
             items=items,
         )
-        invoice_data2 = Invoice.get_data(invoice_id2)
+        invoice_data2 = InvoiceController.get_invoice_data(invoice_id2)
         assert invoice_data2 is not None
         assert invoice_data2["invoice_number"] == "2025.12.31"
 
@@ -178,7 +179,9 @@ class TestImportInvoiceFromFiles:
             }
         ]
         with pytest.raises(ValueError, match="Invalid quantity"):
-            import_invoice_from_files(sample_customer, filename, items)
+            InvoiceController.import_invoice_from_files(
+                sample_customer, filename, items
+            )
 
         # Test zero quantity
         items = [
@@ -190,7 +193,9 @@ class TestImportInvoiceFromFiles:
             }
         ]
         with pytest.raises(ValueError, match="Invalid quantity"):
-            import_invoice_from_files(sample_customer, filename, items)
+            InvoiceController.import_invoice_from_files(
+                sample_customer, filename, items
+            )
 
     def test_import_invalid_rate(self, test_db, sample_customer):
         """Test import with invalid rate values."""
@@ -206,7 +211,9 @@ class TestImportInvoiceFromFiles:
             }
         ]
         with pytest.raises(ValueError, match="Invalid rate"):
-            import_invoice_from_files(sample_customer, filename, items)
+            InvoiceController.import_invoice_from_files(
+                sample_customer, filename, items
+            )
 
     def test_import_invalid_filename_format(self, test_db, sample_customer):
         """Test import with invalid filename formats."""
@@ -221,7 +228,7 @@ class TestImportInvoiceFromFiles:
 
         # Test invalid filename format
         with pytest.raises(ValueError, match="Invalid filename format"):
-            import_invoice_from_files(
+            InvoiceController.import_invoice_from_files(
                 sample_customer, "invoice-data-invalid.txt", items
             )
 
@@ -230,14 +237,14 @@ class TestImportInvoiceFromFiles:
         filename = "invoice-data-3-15.txt"
         items = []
 
-        invoice_id = import_invoice_from_files(
+        invoice_id = InvoiceController.import_invoice_from_files(
             customer_id=sample_customer, invoice_data_file=filename, items=items
         )
 
         assert invoice_id > 0
 
         # Verify empty invoice was created
-        invoice_data = Invoice.get_data(invoice_id)
+        invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
         assert invoice_data["total"] == 0.0
         assert len(invoice_data["items"]) == 0
@@ -263,11 +270,11 @@ class TestImportInvoiceFromFiles:
         # Calculate expected total: 3.5*120 + 2*175.50 = 420 + 351 = 771
         expected_total = 771.0
 
-        invoice_id = import_invoice_from_files(
+        invoice_id = InvoiceController.import_invoice_from_files(
             customer_id=sample_customer, invoice_data_file=filename, items=items
         )
 
-        invoice_data = Invoice.get_data(invoice_id)
+        invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
         assert invoice_data["total"] == expected_total
 
@@ -295,14 +302,71 @@ class TestImportInvoiceFromFiles:
             },
         ]
 
-        invoice_id = import_invoice_from_files(
+        invoice_id = InvoiceController.import_invoice_from_files(
             customer_id=sample_customer, invoice_data_file=filename, items=items
         )
 
-        invoice_data = Invoice.get_data(invoice_id)
+        invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
 
         # Items should be ordered by work_date (ascending)
         assert invoice_data["items"][0]["description"] == "Earlier Work"
         assert invoice_data["items"][1]["description"] == "Middle Work"
         assert invoice_data["items"][2]["description"] == "Later Work"
+
+
+class TestInvoiceDataRetrieval:
+    """Test cases for invoice data retrieval functionality."""
+
+    @pytest.fixture
+    def test_db(self):
+        """Create a temporary database for testing."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = os.path.join(tmp_dir, "test.db")
+            init_db(db_path)
+            yield db_path
+            close_db()
+
+    @pytest.fixture
+    def create_test_customer(self, test_db):
+        """Fixture to create test customers."""
+
+        def _create_customer(name, address):
+            return Customer.create(name, address)
+
+        return _create_customer
+
+    @pytest.fixture
+    def create_test_invoice(self, test_db):
+        """Fixture to create test invoices."""
+
+        def _create_invoice(customer_id, invoice_number, total_amount):
+            from application.models import Invoice, InvoiceDetails
+
+            details = InvoiceDetails(
+                invoice_number=invoice_number,
+                customer_id=customer_id,
+                invoice_date="2025-03-15",
+                due_date="2025-04-14",
+                total_amount=total_amount,
+            )
+            return Invoice.create(details)
+
+        return _create_invoice
+
+    def test_get_invoice_data(self, test_db, create_test_customer, create_test_invoice):
+        """Test getting invoice data."""
+        customer_id = create_test_customer("Test Company", "123 Test St")
+        invoice_id = create_test_invoice(customer_id, "2025.03.15", 1200.0)
+
+        invoice_data = InvoiceController.get_invoice_data(invoice_id)
+        assert invoice_data is not None
+        assert invoice_data["invoice_number"] == "2025.03.15"
+        assert invoice_data["total"] == 1200.0
+        assert invoice_data["client"]["name"] == "Test Company"
+        assert invoice_data["company"]["name"] == "Havelick Software Solutions, LLC"
+
+    def test_get_nonexistent_invoice(self, test_db):
+        """Test getting nonexistent invoice returns None."""
+        invoice_data = InvoiceController.get_invoice_data(99999)
+        assert invoice_data is None

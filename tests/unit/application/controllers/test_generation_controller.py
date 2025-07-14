@@ -1,4 +1,4 @@
-"""Unit tests for generate_invoice_files function."""
+"""Unit tests for generation controller functionality."""
 
 import os
 import tempfile
@@ -6,11 +6,11 @@ from datetime import date
 
 import pytest
 
-from generate_invoice import generate_invoice_files
+from application.controllers.generation_controller import GenerationController
 
 
 class TestGenerateInvoiceFiles:
-    """Test cases for generate_invoice_files function."""
+    """Test cases for GenerationController.generate_invoice_files function."""
 
     @pytest.fixture
     def sample_invoice_data(self):
@@ -50,7 +50,9 @@ class TestGenerateInvoiceFiles:
             output_messages.append(message)
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            generate_invoice_files(sample_invoice_data, temp_dir, capture_output)
+            GenerationController.generate_invoice_files(
+                sample_invoice_data, temp_dir, capture_output
+            )
 
             # Check that files were created
             expected_html = os.path.join(
@@ -71,7 +73,9 @@ class TestGenerateInvoiceFiles:
     def test_html_content_includes_invoice_data(self, sample_invoice_data):
         """Test that HTML content includes the invoice data."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            generate_invoice_files(sample_invoice_data, temp_dir, lambda x: None)
+            GenerationController.generate_invoice_files(
+                sample_invoice_data, temp_dir, lambda x: None
+            )
 
             expected_html = os.path.join(
                 temp_dir, "acme-corporation-invoice-03.15.2025.html"
@@ -97,7 +101,9 @@ class TestGenerateInvoiceFiles:
                 test_data = sample_invoice_data.copy()
                 test_data["client"]["name"] = company_name
 
-                generate_invoice_files(test_data, temp_dir, lambda x: None)
+                GenerationController.generate_invoice_files(
+                    test_data, temp_dir, lambda x: None
+                )
 
                 expected_html = os.path.join(temp_dir, f"{expected_base}.html")
                 assert os.path.exists(expected_html)
@@ -123,7 +129,9 @@ class TestGenerateInvoiceFiles:
         sample_invoice_data["total"] = 1500.0
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            generate_invoice_files(sample_invoice_data, temp_dir, lambda x: None)
+            GenerationController.generate_invoice_files(
+                sample_invoice_data, temp_dir, lambda x: None
+            )
 
             expected_html = os.path.join(
                 temp_dir, "acme-corporation-invoice-03.15.2025.html"
@@ -141,7 +149,9 @@ class TestGenerateInvoiceFiles:
             output_dir = os.path.join(temp_dir, "output")
             os.makedirs(output_dir)
 
-            generate_invoice_files(sample_invoice_data, output_dir, lambda x: None)
+            GenerationController.generate_invoice_files(
+                sample_invoice_data, output_dir, lambda x: None
+            )
 
             expected_html = os.path.join(
                 output_dir, "acme-corporation-invoice-03.15.2025.html"
