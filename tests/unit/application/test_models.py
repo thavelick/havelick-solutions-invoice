@@ -1,73 +1,286 @@
-"""Unit tests for utility functions in models."""
+"""Unit tests for data models."""
 
 import pytest
 
 from application.controllers.invoice_controller import InvoiceController
-from application.date_utils import (
-    calculate_due_date,
-    parse_date_safely,
-    parse_date_to_display,
+from application.models import (
+    Customer,
+    Invoice,
+    InvoiceItem,
+    LineItem,
+    Vendor,
 )
-from application.amount_utils import validate_amount
+from application.date_utils import parse_date_safely
 
 
-class TestValidateAmount:
-    """Test cases for validate_amount function."""
+class TestModelFromDict:
+    """Test from_dict methods for all models using tool fixture."""
 
-    def test_validate_basic_amounts(self):
-        """Test validating basic numeric amounts."""
-        assert validate_amount("150.00") == 150.0
-        assert validate_amount("$150.00") == 150.0
-        assert validate_amount("1,500.00") == 1500.0
-        assert validate_amount("$1,500.00") == 1500.0
-        assert validate_amount("  150.00  ") == 150.0
-        assert validate_amount("150") == 150.0
-        assert validate_amount("0.00") == 0.0
+    def test_customer_from_dict(self, from_dict_checker):
+        """Test Customer.from_dict method."""
+        valid_record = {
+            "id": 1,
+            "name": "Test Company",
+            "address": "123 Test St",
+            "created_at": "2025-01-01 00:00:00",
+        }
+        from_dict_checker(
+            Customer, valid_record, ["id", "name", "address", "created_at"]
+        )
 
-    def test_validate_amount_invalid_values(self):
-        """Test validating invalid amount values."""
-        with pytest.raises(ValueError, match="Invalid amount"):
-            validate_amount("-150.00")
-        with pytest.raises(ValueError, match="Invalid amount"):
-            validate_amount("invalid")
-        with pytest.raises(ValueError, match="Invalid amount"):
-            validate_amount("")
+    def test_invoice_from_dict(self, from_dict_checker):
+        """Test Invoice.from_dict method."""
+        valid_record = {
+            "id": 1,
+            "invoice_number": "2025.03.15",
+            "customer_id": 1,
+            "vendor_id": 1,
+            "invoice_date": "2025-03-15",
+            "due_date": "2025-04-14",
+            "total_amount": 1200.0,
+            "created_at": "2025-01-01 00:00:00",
+        }
+        from_dict_checker(
+            Invoice,
+            valid_record,
+            [
+                "id",
+                "invoice_number",
+                "customer_id",
+                "vendor_id",
+                "invoice_date",
+                "due_date",
+                "total_amount",
+                "created_at",
+            ],
+        )
+
+    def test_invoice_item_from_dict(self, from_dict_checker):
+        """Test InvoiceItem.from_dict method."""
+        valid_record = {
+            "id": 1,
+            "invoice_id": 1,
+            "work_date": "2025-03-15",
+            "description": "Development work",
+            "quantity": 8.0,
+            "rate": 150.0,
+            "amount": 1200.0,
+        }
+        from_dict_checker(
+            InvoiceItem,
+            valid_record,
+            [
+                "id",
+                "invoice_id",
+                "work_date",
+                "description",
+                "quantity",
+                "rate",
+                "amount",
+            ],
+        )
+
+    def test_vendor_from_dict(self, from_dict_checker):
+        """Test Vendor.from_dict method."""
+        valid_record = {
+            "id": 1,
+            "name": "Vendor Name",
+            "address": "456 Vendor Ave",
+            "email": "vendor@example.com",
+            "phone": "555-1234",
+            "created_at": "2025-01-01 00:00:00",
+        }
+        from_dict_checker(
+            Vendor,
+            valid_record,
+            ["id", "name", "address", "email", "phone", "created_at"],
+        )
 
 
-class TestParseDateSafely:
-    """Test cases for parse_date_safely function."""
+class TestCustomerOperations:
+    """Test customer database operations."""
 
-    def test_parse_valid_dates(self):
-        """Test parsing valid dates."""
-        assert parse_date_safely("03/15/2025") == "2025-03-15"
-        assert parse_date_safely("3/5/2025") == "2025-03-05"
-        assert parse_date_safely("2025-03-15", "%Y-%m-%d") == "2025-03-15"
+    def test_create_customer(self, temp_db):
+        """Test creating a new customer."""
+        customer_id = Customer.create("Test Company", "123 Test St")
+        assert customer_id > 0
 
-    def test_parse_invalid_dates(self):
-        """Test parsing invalid dates."""
-        with pytest.raises(ValueError, match="Invalid date format"):
-            parse_date_safely("2025-03-15", "%m/%d/%Y")
-        with pytest.raises(ValueError, match="Invalid date format"):
-            parse_date_safely("13/45/2025")
-        with pytest.raises(ValueError, match="Invalid date format"):
-            parse_date_safely("")
+    def test_get_customer_by_name(self, temp_db):
+        """Test getting customer by name."""
+        Customer.create("Test Company", "123 Test St")
+        customer = Customer.get_by_name("Test Company")
+        assert customer is not None
+        assert customer.name == "Test Company"
+        assert customer.address == "123 Test St"
+
+    def test_get_nonexistent_customer(self, temp_db):
+        """Test getting nonexistent customer returns None."""
+        customer = Customer.get_by_name("Nonexistent")
+        assert customer is None
+
+    def test_customer_upsert_new(self, temp_db):
+        """Test upserting new customer."""
+        customer_id = Customer.upsert("New Company", "456 New Ave")
+        assert customer_id > 0
+        customer = Customer.get_by_name("New Company")
+        assert customer is not None
+        assert customer.address == "456 New Ave"
+
+    def test_customer_upsert_existing(self, temp_db):
+        """Test upserting existing customer updates address."""
+        # Create initial customer
+        original_id = Customer.create("Update Company", "Original Address")
+        # Upsert with new address
+        upsert_id = Customer.upsert("Update Company", "New Address")
+        assert upsert_id == original_id  # Should return same ID
+        # Verify address was updated
+        customer = Customer.get_by_name("Update Company")
+        assert customer is not None
+        assert customer.address == "New Address"
+
+    def test_customer_list_all(self, temp_db):
+        """Test listing all customers."""
+        Customer.create("Company A", "Address A")
+        Customer.create("Company B", "Address B")
+        customers = Customer.list_all()
+        assert len(customers) == 2
+        names = [c.name for c in customers]
+        assert "Company A" in names
+        assert "Company B" in names
 
 
-class TestParseDateToDisplay:
-    """Test cases for parse_date_to_display function."""
+class TestInvoiceOperations:
+    """Test invoice database operations."""
 
-    def test_parse_date_to_display_formats(self):
-        """Test parsing dates to display format."""
-        assert parse_date_to_display("03/15/2025") == "03/15/2025"
-        assert parse_date_to_display("3/5/2025") == "03/05/2025"
-        assert parse_date_to_display("2025-03-15", "%Y-%m-%d") == "03/15/2025"
+    def test_create_invoice(self, temp_db, create_test_customer, create_test_invoice):
+        """Test creating an invoice."""
+        customer_id = create_test_customer()
+        invoice_id = create_test_invoice(customer_id)
+        assert invoice_id > 0
 
-    def test_parse_date_to_display_invalid(self):
-        """Test parsing invalid dates to display format."""
-        with pytest.raises(ValueError, match="Invalid date format"):
-            parse_date_to_display("2025-03-15", "%m/%d/%Y")
-        with pytest.raises(ValueError, match="Invalid date format"):
-            parse_date_to_display("13/45/2025")
+    def test_invoice_unique_number_constraint(
+        self, temp_db, create_test_customer, create_test_invoice
+    ):
+        """Test that duplicate invoice numbers are not allowed."""
+        customer_id = create_test_customer()
+        create_test_invoice(customer_id, "2025.03.15")
+        # Attempting to create another invoice with same number should raise error
+        with pytest.raises(Exception):  # SQLite will raise an integrity error
+            create_test_invoice(customer_id, "2025.03.15")
+
+    def test_invoice_list_all(self, temp_db, create_test_customer, create_test_invoice):
+        """Test listing all invoices."""
+        customer_id = create_test_customer()
+        create_test_invoice(customer_id, "2025.03.15")
+        create_test_invoice(customer_id, "2025.03.16")
+        invoices = Invoice.list_all()
+        assert len(invoices) == 2
+
+    def test_invoice_list_by_customer(
+        self, temp_db, create_test_customer, create_test_invoice
+    ):
+        """Test listing invoices filtered by customer."""
+        customer_id1 = create_test_customer("Customer 1", "Address 1")
+        customer_id2 = create_test_customer("Customer 2", "Address 2")
+        create_test_invoice(customer_id1, "2025.03.15")
+        create_test_invoice(customer_id2, "2025.03.16")
+        # Test filtering by customer
+        customer1_invoices = Invoice.list_all(customer_id1)
+        assert len(customer1_invoices) == 1
+        customer2_invoices = Invoice.list_all(customer_id2)
+        assert len(customer2_invoices) == 1
+
+
+class TestInvoiceItemOperations:
+    """Test invoice item database operations."""
+
+    def test_add_invoice_item(self, temp_db, create_test_customer, create_test_invoice):
+        """Test adding an item to an invoice."""
+        from application import db
+
+        customer_id = create_test_customer()
+        invoice_id = create_test_invoice(customer_id)
+        line_item = LineItem(
+            invoice_id=invoice_id,
+            work_date=parse_date_safely("03/15/2025"),
+            description="Test Work",
+            quantity=8.0,
+            rate=150.0,
+            amount=1200.0,
+        )
+        InvoiceItem.add(line_item)
+        # Verify item was added
+        connection = db.get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT * FROM invoice_items WHERE invoice_id = ?", (invoice_id,)
+        )
+        items = cursor.fetchall()
+        assert len(items) == 1
+        # work_date might be returned as datetime.date object
+        work_date = items[0][2]
+        if hasattr(work_date, "strftime"):
+            assert work_date.strftime("%Y-%m-%d") == "2025-03-15"
+        else:
+            assert work_date == "2025-03-15"
+        assert items[0][3] == "Test Work"  # description
+
+    def test_add_multiple_invoice_items(
+        self,
+        temp_db,
+        create_test_customer,
+        create_test_invoice,
+        create_test_invoice_item,
+    ):
+        """Test adding multiple items to an invoice."""
+        from application import db
+
+        customer_id = create_test_customer()
+        invoice_id = create_test_invoice(customer_id)
+        # Add first item
+        create_test_invoice_item(invoice_id, "First task", 4.0, 150.0)
+        # Add second item
+        create_test_invoice_item(invoice_id, "Second task", 6.0, 125.0)
+        # Verify both items were added
+        connection = db.get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT description, quantity, rate FROM invoice_items WHERE invoice_id = ? ORDER BY description",
+            (invoice_id,),
+        )
+        items = cursor.fetchall()
+        assert len(items) == 2
+        assert items[0][0] == "First task"
+        assert items[0][1] == 4.0
+        assert items[1][0] == "Second task"
+        assert items[1][2] == 125.0
+
+    def test_add_item_with_zero_amount(
+        self, temp_db, create_test_customer, create_test_invoice
+    ):
+        """Test adding an item with zero amount."""
+        from application import db
+
+        customer_id = create_test_customer()
+        invoice_id = create_test_invoice(customer_id)
+        line_item = LineItem(
+            invoice_id=invoice_id,
+            work_date=parse_date_safely("03/15/2025"),
+            description="Free Work",
+            quantity=1.0,
+            rate=0.0,
+            amount=0.0,
+        )
+        InvoiceItem.add(line_item)
+        # Verify item was added with zero amount
+        connection = db.get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT amount FROM invoice_items WHERE invoice_id = ?", (invoice_id,)
+        )
+        items = cursor.fetchall()
+        assert len(items) == 1
+        assert items[0][0] == 0.0
 
 
 class TestGenerateInvoiceMetadataFromFilename:
@@ -111,33 +324,3 @@ class TestGenerateInvoiceMetadataFromFilename:
         assert result["invoice_number"].startswith("2025.")
         assert "/" in result["invoice_date"]
         assert "/" in result["due_date"]
-
-
-class TestCalculateDueDate:
-    """Test cases for calculate_due_date function."""
-
-    def test_calculate_due_date_basic(self):
-        """Test calculating due date with basic cases."""
-        assert calculate_due_date("03/15/2025") == "04/14/2025"
-        assert calculate_due_date("03/15/2025", 15) == "03/30/2025"
-        assert calculate_due_date("03/15/2025", 0) == "03/15/2025"
-        assert calculate_due_date("01/15/2025", 30) == "02/14/2025"
-
-    def test_calculate_due_date_year_boundary(self):
-        """Test calculating due date across year boundary."""
-        assert calculate_due_date("12/15/2025", 30) == "01/14/2026"
-
-    def test_calculate_due_date_leap_year(self):
-        """Test calculating due date in leap year."""
-        assert (
-            calculate_due_date("02/15/2024", 30) == "03/16/2024"
-        )  # 2024 is a leap year
-
-    def test_calculate_due_date_invalid_date(self):
-        """Test calculating due date with invalid date."""
-        with pytest.raises(ValueError, match="Invalid invoice date"):
-            calculate_due_date("2025-03-15")
-        with pytest.raises(ValueError, match="Invalid invoice date"):
-            calculate_due_date("13/45/2025")
-        with pytest.raises(ValueError, match="Invalid invoice date"):
-            calculate_due_date("")
