@@ -4,12 +4,11 @@ import json
 
 import pytest
 
+from application.invoice_parser import _parse_invoice_line, parse_invoice_data
 from generate_invoice import (
-    _parse_invoice_line,
     generate_invoice_metadata,
     load_client_data,
     load_invoice_items,
-    parse_invoice_data,
 )
 
 

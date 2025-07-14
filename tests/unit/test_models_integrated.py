@@ -2,6 +2,8 @@
 
 import pytest
 
+from application.controllers.customer_controller import CustomerController
+from application.controllers.invoice_controller import InvoiceController
 from application.models import (
     Customer,
     Invoice,
@@ -138,7 +140,7 @@ class TestCustomerOperations:
             }
         }
 
-        customer_id = Customer.import_from_json(json_data)
+        customer_id = CustomerController.import_customer_from_json(json_data)
         assert customer_id > 0
 
         customer = Customer.get_by_name("JSON Company")
@@ -162,7 +164,7 @@ class TestInvoiceOperations:
         customer_id = create_test_customer("Test Company", "123 Test St")
         invoice_id = create_test_invoice(customer_id, "2025.03.15", 1200.0)
 
-        invoice_data = Invoice.get_data(invoice_id)
+        invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
         assert invoice_data["invoice_number"] == "2025.03.15"
         assert invoice_data["total"] == 1200.0
@@ -171,7 +173,7 @@ class TestInvoiceOperations:
 
     def test_get_nonexistent_invoice(self, temp_db):
         """Test getting nonexistent invoice returns None."""
-        invoice_data = Invoice.get_data(99999)
+        invoice_data = InvoiceController.get_invoice_data(99999)
         assert invoice_data is None
 
     def test_invoice_unique_number_constraint(
@@ -236,7 +238,7 @@ class TestInvoiceItemOperations:
         InvoiceItem.add(line_item)
 
         # Verify item was added by checking invoice data
-        invoice_data = Invoice.get_data(invoice_id)
+        invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
         assert len(invoice_data["items"]) == 1
         assert invoice_data["items"][0]["description"] == "Test work"
@@ -274,7 +276,7 @@ class TestInvoiceItemOperations:
         InvoiceItem.add(item2)
 
         # Verify both items were added
-        invoice_data = Invoice.get_data(invoice_id)
+        invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
         assert len(invoice_data["items"]) == 2
         assert invoice_data["items"][0]["description"] == "Work 1"
@@ -298,7 +300,7 @@ class TestInvoiceItemOperations:
 
         InvoiceItem.add(line_item)
 
-        invoice_data = Invoice.get_data(invoice_id)
+        invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
         assert len(invoice_data["items"]) == 1
         assert invoice_data["items"][0]["rate"] == 0.0

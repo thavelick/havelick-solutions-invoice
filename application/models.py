@@ -124,15 +124,6 @@ class Customer:
         return Customer.create(name, address)
 
     @staticmethod
-    def import_from_json(json_data: Dict[str, Any]) -> int:
-        """Import customer from JSON data structure."""
-        client_data = json_data.get("client", {})
-        name = client_data.get("name", "") or ""
-        address = client_data.get("address", "") or ""
-
-        return Customer.upsert(name, address)
-
-    @staticmethod
     def list_all() -> List["Customer"]:
         """List all customers."""
         connection = db.get_db_connection()
@@ -204,65 +195,6 @@ class Invoice:
         if invoice_id is None:
             raise ValueError("Failed to create invoice")
         return invoice_id
-
-    @staticmethod
-    def get_data(invoice_id: int) -> Optional[Dict[str, Any]]:
-        """Get complete invoice data including customer, vendor, and items."""
-        connection = db.get_db_connection()
-        cursor = connection.cursor()
-
-        # Get invoice with customer and vendor data
-        cursor.execute(
-            """SELECT i.invoice_number, i.invoice_date, i.due_date, i.total_amount,
-                      c.name as customer_name, c.address as customer_address, 
-                      v.name as vendor_name, v.address as vendor_address,
-                      v.email as vendor_email, v.phone as vendor_phone
-               FROM invoices i
-               JOIN customers c ON i.customer_id = c.id
-               JOIN vendors v ON i.vendor_id = v.id
-               WHERE i.id = ?""",
-            (invoice_id,),
-        )
-
-        invoice_row = cursor.fetchone()
-        if not invoice_row:
-            return None
-
-        # Get invoice items
-        cursor.execute(
-            """SELECT work_date, description, quantity, rate, amount
-               FROM invoice_items
-               WHERE invoice_id = ?
-               ORDER BY work_date""",
-            (invoice_id,),
-        )
-
-        items = [
-            {
-                "date": row[0],
-                "description": row[1],
-                "quantity": row[2],
-                "rate": row[3],
-                "amount": row[4],
-            }
-            for row in cursor.fetchall()
-        ]
-
-        return {
-            "invoice_number": invoice_row[0],
-            "invoice_date": invoice_row[1],
-            "due_date": invoice_row[2],
-            "total": invoice_row[3],
-            "company": {
-                "name": invoice_row[6],
-                "address": invoice_row[7],
-                "email": invoice_row[8],
-                "phone": invoice_row[9],
-            },
-            "client": {"name": invoice_row[4], "address": invoice_row[5]},
-            "payment_terms": "Net 30 days",
-            "items": items,
-        }
 
     @staticmethod
     def list_all(customer_id: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -433,53 +365,3 @@ def generate_invoice_metadata_from_filename(invoice_data_file: str) -> Dict[str,
         }
     except (ValueError, IndexError) as e:
         raise ValueError(f"Error generating invoice metadata: {e}") from e
-
-
-def import_invoice_from_files(
-    customer_id: int, invoice_data_file: str, items: List[Dict[str, Any]]
-) -> int:
-    """Import invoice from TSV file data."""
-    try:
-        # Validate and calculate total
-        total_amount = 0.0
-        for item in items:
-            if (
-                not isinstance(item.get("quantity"), (int, float))
-                or item["quantity"] <= 0
-            ):
-                raise ValueError(f"Invalid quantity for item: {item}")
-            if not isinstance(item.get("rate"), (int, float)) or item["rate"] < 0:
-                raise ValueError(f"Invalid rate for item: {item}")
-            total_amount += item["quantity"] * item["rate"]
-
-        # Generate invoice details and create invoice
-        metadata = generate_invoice_metadata_from_filename(invoice_data_file)
-        details = InvoiceDetails(
-            invoice_number=metadata["invoice_number"],
-            customer_id=customer_id,
-            invoice_date=parse_date_safely(metadata["invoice_date"]),
-            due_date=parse_date_safely(metadata["due_date"]),
-            total_amount=total_amount,
-        )
-        invoice_id = Invoice.create(details)
-
-        # Add items
-        for item in items:
-            # Convert date format from MM/DD/YYYY to YYYY-MM-DD for database
-            work_date = parse_date_safely(item["date"], "%m/%d/%Y")
-
-            amount = item["quantity"] * item["rate"]
-            line_item = LineItem(
-                invoice_id=invoice_id,
-                work_date=work_date,
-                description=item["description"],
-                quantity=item["quantity"],
-                rate=item["rate"],
-                amount=amount,
-            )
-            InvoiceItem.add(line_item)
-
-        return invoice_id
-
-    except (ValueError, KeyError, TypeError) as e:
-        raise ValueError(f"Error importing invoice from files: {e}") from e
