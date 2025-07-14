@@ -61,7 +61,6 @@ class TestCLIIntegration:
             cmd,
             capture_output=True,
             text=True,
-            cwd="/home/tristan/Projects/havelick-solutions-invoice",
         )
         return result
 
