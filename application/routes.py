@@ -16,7 +16,7 @@ def dashboard():
     try:
         recent_invoices = Invoice.get_recent(3)
         return render_template("dashboard.html", recent_invoices=recent_invoices)
-    except sqlite3.Error:
+    except (sqlite3.DatabaseError, sqlite3.OperationalError):
         # Display friendly error message if database unavailable
         return render_template(
             "dashboard.html",
@@ -41,5 +41,5 @@ def status():
                 "total_invoices": total_invoices,
             }
         ), 200
-    except sqlite3.Error as e:
+    except (sqlite3.DatabaseError, sqlite3.OperationalError) as e:
         return jsonify({"status": "unhealthy", "error": str(e)}), 503

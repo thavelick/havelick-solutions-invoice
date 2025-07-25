@@ -1,6 +1,7 @@
 """Flask application factory for invoice web interface."""
 
 import logging
+import os
 
 from flask import Flask
 
@@ -11,7 +12,7 @@ def create_app() -> Flask:
 
     # Basic configuration
     app.config["DEBUG"] = True
-    app.config["SECRET_KEY"] = "dev-secret-key"  # TODO: Use proper secret in production
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key")
 
     # Configure logging
     configure_logging(app)
