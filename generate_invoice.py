@@ -2,12 +2,12 @@
 """Invoice generator for Havelick Software Solutions.
 
 Generates HTML and PDF invoices from client data and tab-separated invoice data files.
-Enhanced with SQLite database support for storing vendors, customers, invoices, and items.
+Enhanced with SQLite database support for storing vendors, customers, invoices, and
+items.
 """
 
 import argparse
 import sys
-
 
 from application import db
 from application.client_parser import parse_client_data
@@ -31,7 +31,7 @@ def load_client_data(filepath):
     """Load and validate client data from JSON file."""
     try:
         return parse_client_data(filepath)
-    except (FileNotFoundError, ValueError, IOError) as e:
+    except (OSError, FileNotFoundError, ValueError) as e:
         # Preserve the original exception type for compatibility
         raise e
 
@@ -40,7 +40,7 @@ def load_invoice_items(filepath):
     """Load invoice items from tab-separated file."""
     try:
         return parse_invoice_data(filepath)
-    except (FileNotFoundError, ValueError, IOError) as e:
+    except (OSError, FileNotFoundError, ValueError) as e:
         raise ValueError(f"Error loading invoice items: {e}") from e
 
 
@@ -76,7 +76,7 @@ def legacy_main(client_file, invoice_data_file, output_dir, db_path="invoices.db
 
         # Generate output files
         GenerationController.generate_invoice_files(data, output_dir)
-    except (ValueError, FileNotFoundError, IOError) as e:
+    except (OSError, ValueError, FileNotFoundError) as e:
         print(f"Error: {e}")
         sys.exit(1)
 

@@ -10,7 +10,8 @@ import pytest
 
 
 class TestCLIIntegration:
-    """Integration tests for CLI commands using subprocess to test actual CLI behavior."""
+    """Integration tests for CLI commands using subprocess to test actual CLI
+    behavior."""
 
     @pytest.fixture
     def temp_db(self):
@@ -40,7 +41,10 @@ class TestCLIIntegration:
     @pytest.fixture
     def sample_invoice_file(self):
         """Create a sample invoice data file."""
-        invoice_data = "Date\tHours\t Amt \tDescription\n3/15/2025\t8\t$1200.00\tSoftware development work\n"
+        invoice_data = (
+            "Date\tHours\t Amt \tDescription\n"
+            "3/15/2025\t8\t$1200.00\tSoftware development work\n"
+        )
         with tempfile.NamedTemporaryFile(
             mode="w", suffix="-data-3-15.txt", delete=False
         ) as tmp:

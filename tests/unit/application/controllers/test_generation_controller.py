@@ -82,7 +82,7 @@ class TestGenerateInvoiceFiles:
             )
 
             # Check HTML content includes key data
-            with open(expected_html, "r", encoding="utf-8") as f:
+            with open(expected_html, encoding="utf-8") as f:
                 html_content = f.read()
                 assert "Invoice 2025.03.15" in html_content
                 assert "Acme Corporation" in html_content
@@ -137,7 +137,7 @@ class TestGenerateInvoiceFiles:
                 temp_dir, "acme-corporation-invoice-03.15.2025.html"
             )
 
-            with open(expected_html, "r", encoding="utf-8") as f:
+            with open(expected_html, encoding="utf-8") as f:
                 html_content = f.read()
                 assert "Web Development" in html_content
                 assert "Bug Fixes" in html_content

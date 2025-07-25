@@ -3,7 +3,9 @@
 import os
 import subprocess
 import tempfile
+from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -110,8 +112,8 @@ def create_test_invoice():
         invoice_number: str = "2025.03.15",
         total_amount: float = 1000.0,
     ):
-        from application.models import Invoice, InvoiceDetails
         from application.date_utils import parse_date_safely
+        from application.models import Invoice, InvoiceDetails
 
         details = InvoiceDetails(
             invoice_number=invoice_number,
@@ -135,8 +137,8 @@ def create_test_invoice_item():
         quantity: float = 8.0,
         rate: float = 150.0,
     ):
-        from application.models import InvoiceItem, LineItem
         from application.date_utils import parse_date_safely
+        from application.models import InvoiceItem, LineItem
 
         line_item = LineItem(
             invoice_id=invoice_id,
@@ -155,9 +157,8 @@ def create_test_invoice_item():
 @pytest.fixture
 def from_dict_checker():
     """Fixture that provides a tool for testing from_dict methods."""
-    from typing import Any, Dict, Type
 
-    def check(model_class: Type, valid_record: Dict[str, Any], required_fields: list):
+    def check(model_class: type, valid_record: dict[str, Any], required_fields: list):
         """
         Test a model's from_dict method.
 
@@ -169,7 +170,16 @@ def from_dict_checker():
         # Test valid record
         instance = model_class.from_dict(valid_record)
         for field, value in valid_record.items():
-            assert getattr(instance, field) == value
+            instance_value = getattr(instance, field)
+            # Date/datetime fields should be parsed from strings
+            if field == "created_at":
+                expected = datetime.fromisoformat(value.replace(" ", "T"))
+                assert instance_value == expected
+            elif field in ["invoice_date", "due_date", "work_date"]:
+                expected = datetime.fromisoformat(value).date()
+                assert instance_value == expected
+            else:
+                assert instance_value == value
 
         # Test missing field
         for field in required_fields:
@@ -179,7 +189,7 @@ def from_dict_checker():
                 model_class.from_dict(incomplete_record)
 
         # Test None values
-        none_record: Dict[str, Any] = {field: None for field in valid_record.keys()}
+        none_record: dict[str, Any] = dict.fromkeys(valid_record.keys())
         none_record["id"] = 1  # Keep ID as valid
         none_instance = model_class.from_dict(none_record)
         for field, value in none_record.items():

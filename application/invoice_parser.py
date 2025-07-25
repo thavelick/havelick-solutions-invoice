@@ -70,7 +70,7 @@ def parse_invoice_data(filename):
 
     items = []
     try:
-        with open(filename, "r", encoding="utf-8") as f:
+        with open(filename, encoding="utf-8") as f:
             lines = f.readlines()
             # Skip header row if it exists
             start_index = (
@@ -88,8 +88,8 @@ def parse_invoice_data(filename):
                         items.append(item)
                 except ValueError as e:
                     raise ValueError(f"Error parsing line {line_num}: {e}") from e
-    except IOError as e:
-        raise IOError(f"Error reading file {filename}: {e}") from e
+    except OSError as e:
+        raise OSError(f"Error reading file {filename}: {e}") from e
 
     if not items:
         raise ValueError(f"No valid invoice items found in {filename}")
