@@ -12,6 +12,10 @@ generate: # Generate invoice HTML from template (usage: make generate CLIENT=acm
 	uv run python generate_invoice.py one-shot $(CLIENT).json $(DATA).txt
 	@echo "Done."
 
+dev: # Start Flask web development server
+	@echo "Starting Flask development server.."
+	uv run python -m application.app
+
 update: # Update dependencies
 	@echo "Updating dependencies.."
 	uv sync -U

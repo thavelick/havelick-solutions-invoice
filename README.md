@@ -1,6 +1,6 @@
-# Havelick Solutions Invoice Generator
+# Havelick Solutions Invoice Manager
 
-A Python-based invoice generator using Jinja2 templates and uv for dependency management.
+A Python-based invoice management system with both CLI and web interfaces, using Jinja2 templates and uv for dependency management.
 
 ## Setup
 
@@ -11,6 +11,8 @@ A Python-based invoice generator using Jinja2 templates and uv for dependency ma
 
 ## Usage
 
+### CLI Interface
+
 Generate an invoice using:
 ```bash
 make generate CLIENT=<client-name> DATA=<invoice-data-file>
@@ -20,6 +22,18 @@ Example:
 ```bash
 make generate CLIENT=acme-corp DATA=invoice-data-3-31
 ```
+
+### Web Interface
+
+Start the web development server:
+```bash
+make dev
+```
+
+Then visit http://localhost:5000 to access the dashboard with:
+- Recent invoices display
+- Navigation for future features
+- Health check at http://localhost:5000/status
 
 ## File Structure
 
@@ -62,12 +76,23 @@ The filename format `invoice-data-<M-D>.txt` automatically generates:
 ## Make Commands
 
 - `make setup` - Install dependencies
-- `make generate CLIENT=<name> DATA=<file>` - Generate invoice
+- `make generate CLIENT=<name> DATA=<file>` - Generate invoice (CLI)
+- `make dev` - Start Flask web development server
 - `make update` - Update dependencies
-- `make lint` - Run linters (isort, black, pyright, pylint)
+- `make lint` - Run linters (ruff, pyright, pylint)
 - `make test` - Run all tests
 - `make test-unit` - Run unit tests only
 - `make test-integration` - Run integration tests only
 - `make test-dist` - Run tests distributed across CPU cores (faster)
 - `make test-with-coverage` - Run tests with coverage reporting
 - `make help` - Show available commands
+
+## Dependencies
+
+Core dependencies:
+- **Flask** - Web framework for dashboard interface
+- **Jinja2** - Template engine for both CLI and web
+- **WeasyPrint** - PDF generation
+- **uv** - Python package manager
+
+Development dependencies include pytest, pylint, pyright, ruff, and playwright for testing.

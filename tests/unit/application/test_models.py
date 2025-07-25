@@ -108,6 +108,95 @@ class TestInvoiceOperations:
         customer2_invoices = Invoice.list_all(customer_id2)
         assert len(customer2_invoices) == 1
 
+    def test_invoice_get_recent(self, temp_db, create_test_customer):
+        """Test getting N most recent invoices with limit."""
+        from application.date_utils import parse_date_safely
+        from application.models import Invoice, InvoiceDetails
+
+        customer_id = create_test_customer()
+        # Create invoices with different dates manually to test ordering
+
+        # Create invoice from 2025.03.20
+        details1 = InvoiceDetails(
+            invoice_number="2025.03.20",
+            customer_id=customer_id,
+            invoice_date=parse_date_safely("03/20/2025"),
+            due_date=parse_date_safely("04/19/2025"),
+            total_amount=1000.0,
+        )
+        Invoice.create(details1)
+
+        # Create invoice from 2025.03.15
+        details2 = InvoiceDetails(
+            invoice_number="2025.03.15",
+            customer_id=customer_id,
+            invoice_date=parse_date_safely("03/15/2025"),
+            due_date=parse_date_safely("04/14/2025"),
+            total_amount=1200.0,
+        )
+        Invoice.create(details2)
+
+        # Create invoice from 2025.03.25
+        details3 = InvoiceDetails(
+            invoice_number="2025.03.25",
+            customer_id=customer_id,
+            invoice_date=parse_date_safely("03/25/2025"),
+            due_date=parse_date_safely("04/24/2025"),
+            total_amount=800.0,
+        )
+        Invoice.create(details3)
+
+        # Test getting recent invoices with limit
+        recent_invoices = Invoice.get_recent(3)
+        assert len(recent_invoices) == 3
+
+        # Should be ordered by invoice_date DESC (most recent first)
+        invoice_numbers = [inv["invoice_number"] for inv in recent_invoices]
+        assert invoice_numbers == ["2025.03.25", "2025.03.20", "2025.03.15"]
+
+        # Test getting more than available
+        all_recent = Invoice.get_recent(10)
+        assert len(all_recent) == 3  # Only 3 invoices exist
+
+        # Test getting zero invoices
+        zero_invoices = Invoice.get_recent(0)
+        assert len(zero_invoices) == 0
+
+    def test_invoice_get_recent_empty_database(self, temp_db):
+        """Test getting recent invoices from empty database."""
+        recent_invoices = Invoice.get_recent(3)
+        assert len(recent_invoices) == 0
+
+    def test_invoice_get_recent_data_structure(self, temp_db, create_test_customer):
+        """Test that get_recent returns expected data structure."""
+        from application.date_utils import parse_date_safely
+        from application.models import Invoice, InvoiceDetails
+
+        customer_id = create_test_customer("Test Customer", "123 Test St")
+
+        details = InvoiceDetails(
+            invoice_number="2025.03.15",
+            customer_id=customer_id,
+            invoice_date=parse_date_safely("03/15/2025"),
+            due_date=parse_date_safely("04/14/2025"),
+            total_amount=1200.0,
+        )
+        Invoice.create(details)
+
+        recent_invoices = Invoice.get_recent(1)
+        assert len(recent_invoices) == 1
+
+        invoice = recent_invoices[0]
+        assert "id" in invoice
+        assert "invoice_number" in invoice
+        assert "customer_name" in invoice
+        assert "invoice_date" in invoice
+        assert "total_amount" in invoice
+
+        assert invoice["invoice_number"] == "2025.03.15"
+        assert invoice["customer_name"] == "Test Customer"
+        assert invoice["total_amount"] == 1200.0
+
 
 class TestInvoiceItemOperations:
     """Test invoice item database operations."""

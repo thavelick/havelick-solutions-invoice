@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Invoice generator for Havelick Software Solutions"
 requires-python = ">=3.13"
 dependencies = [
+    "flask>=3.1.1",
     "jinja2>=3.1.6",
     "weasyprint>=65.1",
 ]
@@ -58,4 +59,5 @@ select = [
     "C4",  # flake8-comprehensions
     "PIE", # flake8-pie
     "SIM", # flake8-simplify
+    "BLE", # flake8-blind-except (catches bare except and broad exceptions)
 ]

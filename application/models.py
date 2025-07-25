@@ -210,6 +210,32 @@ class Invoice:
         ]
 
     @staticmethod
+    def get_recent(limit: int) -> list[dict[str, Any]]:
+        """Get N most recent invoices efficiently with LIMIT clause."""
+        connection = db.get_db_connection()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """SELECT i.id, i.invoice_number, c.name, i.invoice_date, i.total_amount
+               FROM invoices i
+               JOIN customers c ON i.customer_id = c.id
+               ORDER BY i.invoice_date DESC
+               LIMIT ?""",
+            (limit,),
+        )
+
+        return [
+            {
+                "id": row[0],
+                "invoice_number": row[1],
+                "customer_name": row[2],
+                "invoice_date": _parse_date_from_db(row[3]),
+                "total_amount": row[4],
+            }
+            for row in cursor.fetchall()
+        ]
+
+    @staticmethod
     def get_complete_data(invoice_id: int) -> dict[str, Any] | None:
         """Get complete invoice data including customer, vendor, and items."""
         connection = db.get_db_connection()

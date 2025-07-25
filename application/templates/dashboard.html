@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Invoice Manager{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h2>Welcome to Invoice Manager</h2>
+    
+    {% if error %}
+        <div class="error">
+            <p>{{ error }}</p>
+        </div>
+    {% endif %}
+
+    <section class="recent-invoices">
+        <h3>Recent Invoices</h3>
+        
+        {% if recent_invoices %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Invoice Number</th>
+                        <th>Customer</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in recent_invoices %}
+                    <tr>
+                        <td>{{ invoice.invoice_number }}</td>
+                        <td>{{ invoice.customer_name }}</td>
+                        <td>{{ invoice.invoice_date.strftime('%m/%d/%Y') if invoice.invoice_date else 'N/A' }}</td>
+                        <td>${{ "%.2f"|format(invoice.total_amount) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="no-invoices">No invoices yet. <a href="#">Create your first invoice</a></p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
