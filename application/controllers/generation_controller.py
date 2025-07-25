@@ -2,7 +2,7 @@
 
 import os
 from importlib import resources
-from typing import Any, Dict
+from typing import Any
 
 from jinja2 import Environment
 from weasyprint import HTML
@@ -15,14 +15,15 @@ class GenerationController:
 
     @staticmethod
     def generate_invoice_files(
-        data: Dict[str, Any], output_dir: str = ".", output_handler=None
+        data: dict[str, Any], output_dir: str = ".", output_handler=None
     ) -> None:
         """Generate HTML and PDF invoice files from data.
 
         Args:
             data: Invoice data dictionary
             output_dir: Directory to write files to
-            output_handler: Optional callable for handling output messages (defaults to print)
+            output_handler: Optional callable for handling output messages
+                (defaults to print)
         """
         if output_handler is None:
             output_handler = print
@@ -60,5 +61,6 @@ class GenerationController:
         HTML(filename=html_filename).write_pdf(pdf_filename)
 
         output_handler(
-            f"Invoice generated: {html_filename} and {pdf_filename} (Total: ${data['total']:.2f})"
+            f"Invoice generated: {html_filename} and {pdf_filename} "
+            f"(Total: ${data['total']:.2f})"
         )

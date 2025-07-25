@@ -1,8 +1,12 @@
 """Unit tests for data models."""
 
+import sqlite3
+from datetime import datetime
+
 import pytest
 
 from application.controllers.invoice_controller import InvoiceController
+from application.date_utils import parse_date_safely
 from application.models import (
     Customer,
     Invoice,
@@ -10,7 +14,6 @@ from application.models import (
     LineItem,
     Vendor,
 )
-from application.date_utils import parse_date_safely
 
 
 class TestModelFromDict:
@@ -165,7 +168,7 @@ class TestInvoiceOperations:
         customer_id = create_test_customer()
         create_test_invoice(customer_id, "2025.03.15")
         # Attempting to create another invoice with same number should raise error
-        with pytest.raises(Exception):  # SQLite will raise an integrity error
+        with pytest.raises(sqlite3.IntegrityError):
             create_test_invoice(customer_id, "2025.03.15")
 
     def test_invoice_list_all(self, temp_db, create_test_customer, create_test_invoice):
@@ -200,9 +203,10 @@ class TestInvoiceItemOperations:
 
         customer_id = create_test_customer()
         invoice_id = create_test_invoice(customer_id)
+        current_year = datetime.now().year
         line_item = LineItem(
             invoice_id=invoice_id,
-            work_date=parse_date_safely("03/15/2025"),
+            work_date=parse_date_safely(f"03/15/{current_year}"),
             description="Test Work",
             quantity=8.0,
             rate=150.0,
@@ -219,10 +223,11 @@ class TestInvoiceItemOperations:
         assert len(items) == 1
         # work_date might be returned as datetime.date object
         work_date = items[0][2]
+        expected_date = f"{current_year}-03-15"
         if hasattr(work_date, "strftime"):
-            assert work_date.strftime("%Y-%m-%d") == "2025-03-15"
+            assert work_date.strftime("%Y-%m-%d") == expected_date
         else:
-            assert work_date == "2025-03-15"
+            assert work_date == expected_date
         assert items[0][3] == "Test Work"  # description
 
     def test_add_multiple_invoice_items(
@@ -245,7 +250,8 @@ class TestInvoiceItemOperations:
         connection = db.get_db_connection()
         cursor = connection.cursor()
         cursor.execute(
-            "SELECT description, quantity, rate FROM invoice_items WHERE invoice_id = ? ORDER BY description",
+            "SELECT description, quantity, rate FROM invoice_items "
+            "WHERE invoice_id = ? ORDER BY description",
             (invoice_id,),
         )
         items = cursor.fetchall()

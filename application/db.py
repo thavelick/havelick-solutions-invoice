@@ -1,11 +1,9 @@
 """Database connection management for invoice application."""
 
 import sqlite3
-from typing import Optional
-
 
 # Global connection storage
-_db_connection: Optional[sqlite3.Connection] = None
+_db_connection: sqlite3.Connection | None = None
 _db_path: str = "invoices.db"
 
 
@@ -17,7 +15,7 @@ def init_db(db_path: str = "invoices.db"):
     connection = get_db_connection()
 
     # Read and execute schema file
-    with open("application/schema.sql", "r", encoding="utf-8") as f:
+    with open("application/schema.sql", encoding="utf-8") as f:
         connection.executescript(f.read())
 
     connection.commit()
@@ -28,7 +26,7 @@ def get_db_connection() -> sqlite3.Connection:
     global _db_connection, _db_path
 
     if _db_connection is None:
-        _db_connection = sqlite3.connect(_db_path, detect_types=sqlite3.PARSE_DECLTYPES)
+        _db_connection = sqlite3.connect(_db_path)
         _db_connection.row_factory = sqlite3.Row
 
     return _db_connection

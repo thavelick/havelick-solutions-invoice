@@ -10,7 +10,7 @@ def parse_client_data(filepath):
         raise FileNotFoundError(f"Client file not found: {filepath}")
 
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             data = json.load(f)
 
             # Validate required fields
@@ -26,5 +26,5 @@ def parse_client_data(filepath):
             return data
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON in {filepath}: {e}") from e
-    except IOError as e:
-        raise IOError(f"Error reading file {filepath}: {e}") from e
+    except OSError as e:
+        raise OSError(f"Error reading file {filepath}: {e}") from e

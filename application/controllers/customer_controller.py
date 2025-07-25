@@ -1,6 +1,6 @@
 """Customer controller for handling customer business logic."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..client_parser import parse_client_data
 from ..models import Customer
@@ -15,7 +15,7 @@ class CustomerController:
         return Customer.create(name, address)
 
     @staticmethod
-    def import_customer_from_json(json_data: Dict[str, Any]) -> int:
+    def import_customer_from_json(json_data: dict[str, Any]) -> int:
         """Import customer from JSON data structure."""
         client_data = json_data.get("client", {})
         name = client_data.get("name", "") or ""
@@ -30,11 +30,11 @@ class CustomerController:
         return CustomerController.import_customer_from_json(json_data)
 
     @staticmethod
-    def list_customers() -> List[Customer]:
+    def list_customers() -> list[Customer]:
         """List all customers."""
         return Customer.list_all()
 
     @staticmethod
-    def get_customer_by_name(name: str) -> Optional[Customer]:
+    def get_customer_by_name(name: str) -> Customer | None:
         """Get customer by name."""
         return Customer.get_by_name(name)

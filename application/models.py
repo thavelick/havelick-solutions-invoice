@@ -1,9 +1,24 @@
 """Data models for invoice management system."""
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from datetime import date, datetime
+from typing import Any, Optional
 
 from . import db
+
+
+def _parse_date_from_db(date_str: str | None) -> date | None:
+    """Parse date string from database into date object."""
+    if date_str is None:
+        return None
+    return datetime.fromisoformat(date_str).date()
+
+
+def _parse_datetime_from_db(datetime_str: str | None) -> datetime | None:
+    """Parse datetime string from database into datetime object."""
+    if datetime_str is None:
+        return None
+    return datetime.fromisoformat(datetime_str.replace(" ", "T"))
 
 
 # Constants
@@ -37,7 +52,13 @@ class Vendor:
     """Vendor model for managing company information."""
 
     def __init__(
-        self, id: int, name: str, address: str, email: str, phone: str, created_at: str
+        self,
+        id: int,
+        name: str,
+        address: str,
+        email: str,
+        phone: str,
+        created_at: datetime | None,
     ):
         self.id = id
         self.name = name
@@ -55,14 +76,14 @@ class Vendor:
             address=record["address"],
             email=record["email"],
             phone=record["phone"],
-            created_at=record["created_at"],
+            created_at=_parse_datetime_from_db(record["created_at"]),
         )
 
 
 class Customer:
     """Customer model for managing client information."""
 
-    def __init__(self, id: int, name: str, address: str, created_at: str):
+    def __init__(self, id: int, name: str, address: str, created_at: datetime | None):
         self.id = id
         self.name = name
         self.address = address
@@ -75,7 +96,7 @@ class Customer:
             id=record["id"],
             name=record["name"],
             address=record["address"],
-            created_at=record["created_at"],
+            created_at=_parse_datetime_from_db(record["created_at"]),
         )
 
     @staticmethod
@@ -123,7 +144,7 @@ class Customer:
         return Customer.create(name, address)
 
     @staticmethod
-    def list_all() -> List["Customer"]:
+    def list_all() -> list["Customer"]:
         """List all customers."""
         connection = db.get_db_connection()
         cursor = connection.cursor()
@@ -142,10 +163,10 @@ class Invoice:
         invoice_number: str,
         customer_id: int,
         vendor_id: int,
-        invoice_date: str,
-        due_date: str,
+        invoice_date: date | None,
+        due_date: date | None,
         total_amount: float,
-        created_at: str,
+        created_at: datetime | None,
     ):
         self.id = id
         self.invoice_number = invoice_number
@@ -164,10 +185,10 @@ class Invoice:
             invoice_number=record["invoice_number"],
             customer_id=record["customer_id"],
             vendor_id=record["vendor_id"],
-            invoice_date=record["invoice_date"],
-            due_date=record["due_date"],
+            invoice_date=_parse_date_from_db(record["invoice_date"]),
+            due_date=_parse_date_from_db(record["due_date"]),
             total_amount=record["total_amount"],
-            created_at=record["created_at"],
+            created_at=_parse_datetime_from_db(record["created_at"]),
         )
 
     @staticmethod
@@ -176,7 +197,7 @@ class Invoice:
         connection = db.get_db_connection()
         cursor = connection.cursor()
         cursor.execute(
-            """INSERT INTO invoices (invoice_number, customer_id, vendor_id, 
+            """INSERT INTO invoices (invoice_number, customer_id, vendor_id,
                                    invoice_date, due_date, total_amount)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (
@@ -196,7 +217,7 @@ class Invoice:
         return invoice_id
 
     @staticmethod
-    def list_all(customer_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    def list_all(customer_id: int | None = None) -> list[dict[str, Any]]:
         """List invoices, optionally filtered by customer."""
         connection = db.get_db_connection()
         cursor = connection.cursor()
@@ -223,14 +244,14 @@ class Invoice:
                 "id": row[0],
                 "invoice_number": row[1],
                 "customer_name": row[2],
-                "invoice_date": row[3],
+                "invoice_date": _parse_date_from_db(row[3]),
                 "total_amount": row[4],
             }
             for row in cursor.fetchall()
         ]
 
     @staticmethod
-    def get_complete_data(invoice_id: int) -> Optional[Dict[str, Any]]:
+    def get_complete_data(invoice_id: int) -> dict[str, Any] | None:
         """Get complete invoice data including customer, vendor, and items."""
         connection = db.get_db_connection()
         cursor = connection.cursor()
@@ -238,7 +259,7 @@ class Invoice:
         # Get invoice with customer and vendor data
         cursor.execute(
             """SELECT i.invoice_number, i.invoice_date, i.due_date, i.total_amount,
-                      c.name as customer_name, c.address as customer_address, 
+                      c.name as customer_name, c.address as customer_address,
                       v.name as vendor_name, v.address as vendor_address,
                       v.email as vendor_email, v.phone as vendor_phone
                FROM invoices i
@@ -263,7 +284,7 @@ class Invoice:
 
         items = [
             {
-                "date": row[0],
+                "date": _parse_date_from_db(row[0]),
                 "description": row[1],
                 "quantity": row[2],
                 "rate": row[3],
@@ -274,8 +295,8 @@ class Invoice:
 
         return {
             "invoice_number": invoice_row[0],
-            "invoice_date": invoice_row[1],
-            "due_date": invoice_row[2],
+            "invoice_date": _parse_date_from_db(invoice_row[1]),
+            "due_date": _parse_date_from_db(invoice_row[2]),
             "total": invoice_row[3],
             "company": {
                 "name": invoice_row[6],
@@ -296,7 +317,7 @@ class InvoiceItem:
         self,
         id: int,
         invoice_id: int,
-        work_date: str,
+        work_date: date | None,
         description: str,
         quantity: float,
         rate: float,
@@ -316,7 +337,7 @@ class InvoiceItem:
         return InvoiceItem(
             id=record["id"],
             invoice_id=record["invoice_id"],
-            work_date=record["work_date"],
+            work_date=_parse_date_from_db(record["work_date"]),
             description=record["description"],
             quantity=record["quantity"],
             rate=record["rate"],
@@ -329,7 +350,7 @@ class InvoiceItem:
         connection = db.get_db_connection()
         cursor = connection.cursor()
         cursor.execute(
-            """INSERT INTO invoice_items (invoice_id, work_date, description, 
+            """INSERT INTO invoice_items (invoice_id, work_date, description,
                                         quantity, rate, amount)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (

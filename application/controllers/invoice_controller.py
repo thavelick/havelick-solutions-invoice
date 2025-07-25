@@ -1,7 +1,8 @@
 """Invoice controller for handling invoice business logic."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
+from ..date_utils import calculate_due_date, parse_date_safely
 from ..invoice_parser import parse_invoice_data
 from ..models import (
     Invoice,
@@ -9,7 +10,6 @@ from ..models import (
     InvoiceItem,
     LineItem,
 )
-from ..date_utils import calculate_due_date, parse_date_safely
 
 
 class InvoiceController:
@@ -17,18 +17,18 @@ class InvoiceController:
 
     @staticmethod
     def create_invoice(
-        customer_id: int, metadata: Dict[str, str], items: List[Dict[str, Any]]
+        customer_id: int, metadata: dict[str, str], items: list[dict[str, Any]]
     ) -> int:
         """Create an invoice with the given customer, metadata, and items."""
         # Validate and calculate total
         total_amount = 0.0
         for item in items:
             if (
-                not isinstance(item.get("quantity"), (int, float))
+                not isinstance(item.get("quantity"), int | float)
                 or item["quantity"] <= 0
             ):
                 raise ValueError(f"Invalid quantity for item: {item}")
-            if not isinstance(item.get("rate"), (int, float)) or item["rate"] < 0:
+            if not isinstance(item.get("rate"), int | float) or item["rate"] < 0:
                 raise ValueError(f"Invalid rate for item: {item}")
             total_amount += item["quantity"] * item["rate"]
 
@@ -62,7 +62,7 @@ class InvoiceController:
 
     @staticmethod
     def import_invoice_from_files(
-        customer_id: int, invoice_data_file: str, items: List[Dict[str, Any]]
+        customer_id: int, invoice_data_file: str, items: list[dict[str, Any]]
     ) -> int:
         """Import invoice from TSV file data."""
         try:
@@ -86,19 +86,19 @@ class InvoiceController:
         )
 
     @staticmethod
-    def get_invoice_data(invoice_id: int) -> Optional[Dict[str, Any]]:
+    def get_invoice_data(invoice_id: int) -> dict[str, Any] | None:
         """Get complete invoice data including customer, vendor, and items."""
         return Invoice.get_complete_data(invoice_id)
 
     @staticmethod
-    def list_invoices(customer_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    def list_invoices(customer_id: int | None = None) -> list[dict[str, Any]]:
         """List invoices, optionally filtered by customer."""
         return Invoice.list_all(customer_id)
 
     @staticmethod
     def generate_invoice_metadata_from_filename(
         invoice_data_file: str,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Generate invoice number and dates from filename."""
         import os
         from datetime import datetime

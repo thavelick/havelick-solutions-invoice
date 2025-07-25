@@ -99,7 +99,8 @@ class TestDatabaseOperations:
         close_db()  # Should not raise an exception
 
     def test_reset_db_changes_path_and_closes_connection(self):
-        """Test that reset_db changes the database path and closes existing connection."""
+        """Test that reset_db changes the database path and closes existing
+        connection."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path1 = os.path.join(tmp_dir, "test1.db")
             db_path2 = os.path.join(tmp_dir, "test2.db")
