@@ -150,3 +150,16 @@ def create_test_invoice_item():
         return line_item
 
     return _create_invoice_item
+
+
+@pytest.fixture
+def flask_app(temp_db):
+    """Create Flask test client with test database."""
+    from application.app import create_app
+
+    app = create_app()
+    app.config["TESTING"] = True
+    app.config["DEBUG"] = False
+
+    with app.test_client() as client, app.app_context():
+        yield client

@@ -1,9 +1,18 @@
 # Claude Code Guidelines
 
+## Project Overview
+This is a Python-based invoice management system with both CLI and web interfaces. The web interface provides a dashboard for viewing recent invoices and basic navigation, while the CLI interface generates PDF invoices from templates.
+
 ## Development Workflow
 
 ### 1. Available Commands
 Run `make` or `make help` to see all available commands. This project uses a Makefile for common tasks.
+
+Key commands:
+- `make dev` - Start Flask web development server (Claude should assume user has already run this for web testing)
+- `make generate CLIENT=<name> DATA=<file>` - Generate invoice via CLI
+- `make lint` - Run code quality checks
+- `make test` - Run test suite
 
 ### 2. Linting Requirements
 **Always run `make lint` before any commits.** This ensures code quality and consistency by running:
@@ -39,5 +48,5 @@ Run `make` or `make help` to see all available commands. This project uses a Mak
 Before any commit:
 1. Run `make lint` to check and fix code style
 2. Ensure all linters pass without errors
-3. Verify the generated invoice still works with `make generate`
+3. Verify both CLI (`make generate`) and web interface (dashboard loads at http://localhost:5000) still work
 4. Write a descriptive commit message based on our conversation

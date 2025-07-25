@@ -103,7 +103,6 @@ application/
 Add Flask dependencies using uv add:
 ```bash
 uv add flask
-uv add flask-wtf
 ```
 
 ### Makefile
@@ -184,41 +183,41 @@ dev:
 ## Implementation Checklist
 
 ### Phase 1: Minimal Flask Setup
-- [ ] Create new branch `flask_foundation_22`
-- [ ] Add Flask dependencies with `uv add flask` and `uv add flask-wtf`
-- [ ] Add `Invoice.get_recent(limit)` method to application/models.py
-- [ ] Implement minimal Flask app factory in application/app.py
-- [ ] Create simple dashboard route in application/routes.py
-- [ ] Add `make dev` command to Makefile
+- [x] Create new branch `flask_foundation_22`
+- [x] Add Flask dependencies with `uv add flask`
+- [x] Add `Invoice.get_recent(limit)` method to application/models.py
+- [x] Implement minimal Flask app factory in application/app.py
+- [x] Create simple dashboard route in application/routes.py
+- [x] Add `make dev` command to Makefile
 
 ### Phase 2: Basic Templates & Static Assets
-- [ ] Create application/templates/ directory structure
-- [ ] Create simple base.html template
-- [ ] Create dashboard.html template to display recent invoices
-- [ ] Set up application/static/css/ directory with minimal CSS
-- [ ] Configure static file serving in Flask app
-- [ ] Test basic template rendering
+- [x] Create application/templates/ directory structure
+- [x] Create simple base.html template
+- [x] Create dashboard.html template to display recent invoices
+- [x] Set up application/static/css/ directory with minimal CSS
+- [x] Configure static file serving in Flask app
+- [x] Test basic template rendering
 
 ### Phase 3: Testing & Integration
-- [ ] Add Flask test client to existing conftest.py
-- [ ] Create test for `Invoice.get_recent(limit)` method
-- [ ] Create basic test for dashboard route
-- [ ] Test that dashboard displays recent invoices from database
-- [ ] Test dashboard with empty invoice database (shows "No invoices yet")
-- [ ] Create test for status endpoint (both healthy and error cases)
-- [ ] Test template rendering works
-- [ ] Test static file serving
-- [ ] Verify import structure works when running the app
-- [ ] Verify no conflicts with existing application structure
+- [x] Add Flask test client to existing conftest.py
+- [x] Create test for `Invoice.get_recent(limit)` method
+- [x] Create basic test for dashboard route
+- [x] Test that dashboard displays recent invoices from database
+- [x] Test dashboard with empty invoice database (shows "No invoices yet")
+- [x] Create test for status endpoint (both healthy and error cases)
+- [x] Test template rendering works
+- [x] Test static file serving
+- [x] Verify import structure works when running the app
+- [x] Verify no conflicts with existing application structure
 
 ### Phase 4: Quality Assurance
-- [ ] Run `make lint` and fix any issues
-- [ ] Update README.md with basic web interface documentation
-- [ ] Update CLAUDE.md to reflect this is now a web application
-- [ ] Test `make dev` command works
-- [ ] Verify dashboard loads at http://localhost:5000 and shows recent invoices
-- [ ] Verify `make generate` still works (no regressions)
-- [ ] Run full test suite to ensure no breakage
+- [x] Run `make lint` and fix any issues
+- [x] Update README.md with basic web interface documentation
+- [x] Update CLAUDE.md to reflect this is now a web application
+- [x] Test `make dev` command works
+- [x] Verify dashboard loads at http://localhost:5000 and shows recent invoices
+- [x] Verify `make generate` still works (no regressions)
+- [x] Run full test suite to ensure no breakage
 
 ## Future Maintenance
 - This minimal foundation provides the structure for future web features
