@@ -65,4 +65,9 @@ The filename format `invoice-data-<M-D>.txt` automatically generates:
 - `make generate CLIENT=<name> DATA=<file>` - Generate invoice
 - `make update` - Update dependencies
 - `make lint` - Run linters (isort, black, pyright, pylint)
+- `make test` - Run all tests
+- `make test-unit` - Run unit tests only
+- `make test-integration` - Run integration tests only
+- `make test-dist` - Run tests distributed across CPU cores (faster)
+- `make test-with-coverage` - Run tests with coverage reporting
 - `make help` - Show available commands

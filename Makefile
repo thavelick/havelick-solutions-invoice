@@ -50,6 +50,10 @@ test-with-coverage: # Run tests with coverage
 	@echo "Running tests with coverage.."
 	uv run pytest --cov=. --cov-report=html --cov-report=term tests/
 
+test-dist: # Run tests distributed across CPUs
+	@echo "Running distributed tests.."
+	uv run pytest -n auto tests/
+
 # -----------------------------------------------------------
 # CAUTION: If you have a file with the same name as make
 # command, you need to add it to .PHONY below, otherwise it
