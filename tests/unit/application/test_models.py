@@ -18,12 +18,12 @@ from application.models import (
 class TestCustomerOperations:
     """Test customer database operations."""
 
-    def test_create_customer(self, temp_db):
+    def test_create_customer(self, app):
         """Test creating a new customer."""
         customer_id = Customer.create("Test Company", "123 Test St")
         assert customer_id > 0
 
-    def test_get_customer_by_name(self, temp_db):
+    def test_get_customer_by_name(self, app):
         """Test getting customer by name."""
         Customer.create("Test Company", "123 Test St")
         customer = Customer.get_by_name("Test Company")
@@ -31,12 +31,12 @@ class TestCustomerOperations:
         assert customer.name == "Test Company"
         assert customer.address == "123 Test St"
 
-    def test_get_nonexistent_customer(self, temp_db):
+    def test_get_nonexistent_customer(self, app):
         """Test getting nonexistent customer returns None."""
         customer = Customer.get_by_name("Nonexistent")
         assert customer is None
 
-    def test_customer_upsert_new(self, temp_db):
+    def test_customer_upsert_new(self, app):
         """Test upserting new customer."""
         customer_id = Customer.upsert("New Company", "456 New Ave")
         assert customer_id > 0
@@ -44,7 +44,7 @@ class TestCustomerOperations:
         assert customer is not None
         assert customer.address == "456 New Ave"
 
-    def test_customer_upsert_existing(self, temp_db):
+    def test_customer_upsert_existing(self, app):
         """Test upserting existing customer updates address."""
         # Create initial customer
         original_id = Customer.create("Update Company", "Original Address")
@@ -56,7 +56,7 @@ class TestCustomerOperations:
         assert customer is not None
         assert customer.address == "New Address"
 
-    def test_customer_list_all(self, temp_db):
+    def test_customer_list_all(self, app):
         """Test listing all customers."""
         Customer.create("Company A", "Address A")
         Customer.create("Company B", "Address B")
@@ -70,14 +70,14 @@ class TestCustomerOperations:
 class TestInvoiceOperations:
     """Test invoice database operations."""
 
-    def test_create_invoice(self, temp_db, create_test_customer, create_test_invoice):
+    def test_create_invoice(self, app, create_test_customer, create_test_invoice):
         """Test creating an invoice."""
         customer_id = create_test_customer()
         invoice_id = create_test_invoice(customer_id)
         assert invoice_id > 0
 
     def test_invoice_unique_number_constraint(
-        self, temp_db, create_test_customer, create_test_invoice
+        self, app, create_test_customer, create_test_invoice
     ):
         """Test that duplicate invoice numbers are not allowed."""
         customer_id = create_test_customer()
@@ -86,7 +86,7 @@ class TestInvoiceOperations:
         with pytest.raises(sqlite3.IntegrityError):
             create_test_invoice(customer_id, "2025.03.15")
 
-    def test_invoice_list_all(self, temp_db, create_test_customer, create_test_invoice):
+    def test_invoice_list_all(self, app, create_test_customer, create_test_invoice):
         """Test listing all invoices."""
         customer_id = create_test_customer()
         create_test_invoice(customer_id, "2025.03.15")
@@ -95,7 +95,7 @@ class TestInvoiceOperations:
         assert len(invoices) == 2
 
     def test_invoice_list_by_customer(
-        self, temp_db, create_test_customer, create_test_invoice
+        self, app, create_test_customer, create_test_invoice
     ):
         """Test listing invoices filtered by customer."""
         customer_id1 = create_test_customer("Customer 1", "Address 1")
@@ -108,7 +108,7 @@ class TestInvoiceOperations:
         customer2_invoices = Invoice.list_all(customer_id2)
         assert len(customer2_invoices) == 1
 
-    def test_invoice_get_recent(self, temp_db, create_test_customer):
+    def test_invoice_get_recent(self, app, create_test_customer):
         """Test getting N most recent invoices with limit."""
         from application.date_utils import parse_date_safely
         from application.models import Invoice, InvoiceDetails
@@ -162,12 +162,12 @@ class TestInvoiceOperations:
         zero_invoices = Invoice.get_recent(0)
         assert len(zero_invoices) == 0
 
-    def test_invoice_get_recent_empty_database(self, temp_db):
+    def test_invoice_get_recent_empty_database(self, app):
         """Test getting recent invoices from empty database."""
         recent_invoices = Invoice.get_recent(3)
         assert len(recent_invoices) == 0
 
-    def test_invoice_get_recent_data_structure(self, temp_db, create_test_customer):
+    def test_invoice_get_recent_data_structure(self, app, create_test_customer):
         """Test that get_recent returns expected data structure."""
         from application.date_utils import parse_date_safely
         from application.models import Invoice, InvoiceDetails
@@ -201,7 +201,7 @@ class TestInvoiceOperations:
 class TestInvoiceItemOperations:
     """Test invoice item database operations."""
 
-    def test_add_invoice_item(self, temp_db, create_test_customer, create_test_invoice):
+    def test_add_invoice_item(self, app, create_test_customer, create_test_invoice):
         """Test adding an item to an invoice."""
         from application import db
 
@@ -236,7 +236,7 @@ class TestInvoiceItemOperations:
 
     def test_add_multiple_invoice_items(
         self,
-        temp_db,
+        app,
         create_test_customer,
         create_test_invoice,
         create_test_invoice_item,
@@ -266,7 +266,7 @@ class TestInvoiceItemOperations:
         assert items[1][2] == 125.0
 
     def test_add_item_with_zero_amount(
-        self, temp_db, create_test_customer, create_test_invoice
+        self, app, create_test_customer, create_test_invoice
     ):
         """Test adding an item with zero amount."""
         from application import db

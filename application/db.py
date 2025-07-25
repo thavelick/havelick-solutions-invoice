@@ -2,16 +2,13 @@
 
 import sqlite3
 
-# Global connection storage
-_db_connection: sqlite3.Connection | None = None
-_db_path: str = "invoices.db"
+from flask import current_app, g
 
 
 def init_db(db_path: str = "invoices.db"):
     """Initialize database schema from schema.sql file."""
-    global _db_path
-    _db_path = db_path
-
+    # Store db_path in Flask config
+    current_app.config["DATABASE"] = db_path
     connection = get_db_connection()
 
     # Read and execute schema file
@@ -22,27 +19,24 @@ def init_db(db_path: str = "invoices.db"):
 
 
 def get_db_connection() -> sqlite3.Connection:
-    """Get database connection, creating one if it doesn't exist."""
-    global _db_connection, _db_path
+    """Get database connection using Flask per-request pattern."""
+    # Flask per-request connection pattern
+    if "db" not in g:
+        db_path = current_app.config.get("DATABASE", "invoices.db")
+        g.db = sqlite3.connect(db_path)
+        g.db.row_factory = sqlite3.Row
 
-    if _db_connection is None:
-        _db_connection = sqlite3.connect(_db_path)
-        _db_connection.row_factory = sqlite3.Row
-
-    return _db_connection
-
-
-def close_db():
-    """Close database connection."""
-    global _db_connection
-
-    if _db_connection is not None:
-        _db_connection.close()
-        _db_connection = None
+    return g.db
 
 
-def reset_db(db_path: str = "invoices.db"):
-    """Reset database connection with new path."""
-    global _db_path
-    close_db()
-    _db_path = db_path
+def close_db(_e=None):
+    """Close database connection (Flask teardown handler)."""
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()
+
+
+def init_app(app):
+    """Initialize database with Flask app."""
+    app.teardown_appcontext(close_db)
+    app.config.setdefault("DATABASE", "invoices.db")

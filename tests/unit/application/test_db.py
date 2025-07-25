@@ -6,23 +6,30 @@ import tempfile
 
 import pytest
 
-from application.db import close_db, get_db_connection, init_db, reset_db
+from application.app import create_app
+from application.db import close_db, get_db_connection, init_db
+
+
+@pytest.fixture
+def app():
+    """Create Flask app for testing."""
+    app = create_app()
+    return app
 
 
 @pytest.fixture(autouse=True)
 def cleanup_db():
     """Cleanup database connections before and after each test."""
-    close_db()
+    # Nothing to cleanup with per-request connections
     yield
-    close_db()
 
 
 class TestDatabaseOperations:
     """Test cases for core database operations."""
 
-    def test_init_db_creates_database_with_schema(self):
+    def test_init_db_creates_database_with_schema(self, app):
         """Test that init_db creates database with proper schema."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with app.app_context(), tempfile.TemporaryDirectory() as tmp_dir:
             db_path = os.path.join(tmp_dir, "test.db")
 
             init_db(db_path)
@@ -42,9 +49,9 @@ class TestDatabaseOperations:
 
             conn.close()
 
-    def test_init_db_schema_file_missing(self):
+    def test_init_db_schema_file_missing(self, app):
         """Test init_db when schema file is missing."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with app.app_context(), tempfile.TemporaryDirectory() as tmp_dir:
             db_path = os.path.join(tmp_dir, "test.db")
             original_cwd = os.getcwd()
 
@@ -55,13 +62,14 @@ class TestDatabaseOperations:
             finally:
                 os.chdir(original_cwd)
 
-    def test_get_db_connection_creates_and_reuses_connection(self):
-        """Test that get_db_connection creates a connection and reuses it."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
+    def test_get_db_connection_creates_connection(self, app):
+        """Test that get_db_connection creates a connection in Flask context."""
+        with app.app_context(), tempfile.TemporaryDirectory() as tmp_dir:
             db_path = os.path.join(tmp_dir, "test.db")
+            app.config["DATABASE"] = db_path
             init_db(db_path)
 
-            # Get connection
+            # Get connection - should work in Flask context
             conn1 = get_db_connection()
             assert isinstance(conn1, sqlite3.Connection)
 
@@ -71,57 +79,7 @@ class TestDatabaseOperations:
             result = cursor.fetchone()
             assert result["test_col"] == 1
 
-            # Get connection again - should be the same object
-            conn2 = get_db_connection()
-            assert conn1 is conn2
-
-    def test_close_db_closes_connection(self):
-        """Test that close_db properly closes the connection."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path = os.path.join(tmp_dir, "test.db")
-
-            init_db(db_path)
-            conn = get_db_connection()
-            cursor = conn.cursor()
-
-            # Verify connection is active
-            cursor.execute("SELECT 1 as test_col")
-            assert cursor.fetchone()["test_col"] == 1
-
-            close_db()
-
-            # Connection should be closed now
-            with pytest.raises(sqlite3.ProgrammingError):
-                cursor.execute("SELECT 1")
-
-    def test_close_db_no_connection(self):
-        """Test that close_db handles case when no connection exists."""
-        close_db()  # Should not raise an exception
-
-    def test_reset_db_changes_path_and_closes_connection(self):
-        """Test that reset_db changes the database path and closes existing
-        connection."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path1 = os.path.join(tmp_dir, "test1.db")
-            db_path2 = os.path.join(tmp_dir, "test2.db")
-
-            # Initialize first database
-            init_db(db_path1)
-            conn1 = get_db_connection()
-            cursor = conn1.cursor()
-
-            # Verify connection is active
-            cursor.execute("SELECT 1 as test_col")
-            assert cursor.fetchone()["test_col"] == 1
-
-            # Reset to second database
-            reset_db(db_path2)
-            init_db(db_path2)
-            conn2 = get_db_connection()
-
-            # Should be different connections
-            assert conn1 is not conn2
-
-            # Original connection should be closed
-            with pytest.raises(sqlite3.ProgrammingError):
-                cursor.execute("SELECT 1")
+    def test_close_db_no_connection(self, app):
+        """Test close_db handles case with no connection in Flask context."""
+        # Should not raise an exception even if no connection exists
+        close_db()

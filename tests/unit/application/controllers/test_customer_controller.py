@@ -7,7 +7,7 @@ from application.models import Customer
 class TestCustomerController:
     """Test cases for customer controller operations."""
 
-    def test_create_customer(self, temp_db):
+    def test_create_customer(self, app):
         """Test creating a new customer."""
         customer_id = CustomerController.create_customer("Test Company", "123 Test St")
         assert customer_id > 0
@@ -16,7 +16,7 @@ class TestCustomerController:
         assert customer is not None
         assert customer.address == "123 Test St"
 
-    def test_import_customer_from_json(self, temp_db):
+    def test_import_customer_from_json(self, app):
         """Test importing customer from JSON data."""
         json_data = {
             "client": {
@@ -32,7 +32,7 @@ class TestCustomerController:
         assert customer is not None
         assert customer.address == "123 JSON St"
 
-    def test_import_customer_from_file(self, temp_db, tmp_path):
+    def test_import_customer_from_file(self, app, tmp_path):
         """Test importing customer from JSON file."""
         import json
 
@@ -52,7 +52,7 @@ class TestCustomerController:
         assert customer is not None
         assert customer.address == "123 File St"
 
-    def test_list_customers(self, temp_db):
+    def test_list_customers(self, app):
         """Test listing all customers."""
         # Initially empty
         customers = CustomerController.list_customers()

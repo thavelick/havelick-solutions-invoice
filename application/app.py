@@ -17,6 +17,11 @@ def create_app() -> Flask:
     # Configure logging
     configure_logging(app)
 
+    # Initialize database
+    from . import db
+
+    db.init_app(app)
+
     # Register routes
     from . import routes
 

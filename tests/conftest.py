@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from application.db import close_db, init_db
+from application.db import init_db
 
 
 @pytest.fixture(scope="session")
@@ -80,13 +80,24 @@ def invoice_generator():
 
 
 @pytest.fixture
-def temp_db():
-    """Create a temporary database for testing."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        db_path = os.path.join(tmp_dir, "test.db")
+def app():
+    """Create Flask app with test database."""
+    db_fd, db_path = tempfile.mkstemp()
+
+    from application.app import create_app
+
+    app = create_app()
+    app.config["TESTING"] = True
+    app.config["DEBUG"] = False
+    app.config["DATABASE"] = db_path
+
+    with app.app_context():
         init_db(db_path)
-        yield db_path
-        close_db()
+
+    yield app
+
+    os.close(db_fd)
+    os.unlink(db_path)
 
 
 @pytest.fixture
@@ -152,14 +163,14 @@ def create_test_invoice_item():
     return _create_invoice_item
 
 
+@pytest.fixture(autouse=True)
+def app_context(app):
+    """Automatically provide app context to all tests."""
+    with app.app_context():
+        yield
+
+
 @pytest.fixture
-def flask_app(temp_db):
-    """Create Flask test client with test database."""
-    from application.app import create_app
-
-    app = create_app()
-    app.config["TESTING"] = True
-    app.config["DEBUG"] = False
-
-    with app.test_client() as client, app.app_context():
-        yield client
+def flask_app(app):
+    """Create Flask test client."""
+    return app.test_client()

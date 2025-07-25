@@ -15,16 +15,7 @@ class TestImportInvoiceFromFiles:
     """Test cases for invoice import functionality."""
 
     @pytest.fixture
-    def test_db(self):
-        """Create a temporary database for testing."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path = os.path.join(tmp_dir, "test.db")
-            init_db(db_path)
-            yield db_path
-            close_db()
-
-    @pytest.fixture
-    def sample_customer(self, test_db):
+    def sample_customer(self, app):
         """Create a sample customer for testing."""
         return Customer.create("Test Company", "123 Test St")
 
@@ -46,7 +37,7 @@ class TestImportInvoiceFromFiles:
             },
         ]
 
-    def test_import_valid_invoice(self, test_db, sample_customer, sample_items):
+    def test_import_valid_invoice(self, app, sample_customer, sample_items):
         """Test importing a valid invoice with multiple items."""
         filename = "invoice-data-3-15.txt"
 
@@ -73,7 +64,7 @@ class TestImportInvoiceFromFiles:
         assert invoice_data["items"][0]["rate"] == 150.0
         assert invoice_data["items"][0]["amount"] == 1200.0
 
-    def test_import_single_item_invoice(self, test_db, sample_customer):
+    def test_import_single_item_invoice(self, app, sample_customer):
         """Test importing an invoice with a single item."""
         filename = "invoice-data-12-25.txt"
         items = [
@@ -103,7 +94,7 @@ class TestImportInvoiceFromFiles:
         assert len(invoice_data["items"]) == 1
         assert invoice_data["items"][0]["description"] == "Holiday Consulting"
 
-    def test_import_with_decimal_quantities(self, test_db, sample_customer):
+    def test_import_with_decimal_quantities(self, app, sample_customer):
         """Test importing invoice with decimal quantities and rates."""
         filename = "invoice-data-6-30.txt"
         items = [
@@ -136,7 +127,7 @@ class TestImportInvoiceFromFiles:
         assert invoice_data["items"][0]["rate"] == 175.50
         assert invoice_data["items"][0]["amount"] == 438.75
 
-    def test_import_filename_formats(self, test_db, sample_customer):
+    def test_import_filename_formats(self, app, sample_customer):
         """Test different filename formats."""
         items = [
             {
@@ -169,7 +160,7 @@ class TestImportInvoiceFromFiles:
         current_year = datetime.now().year
         assert invoice_data2["invoice_number"] == f"{current_year}.12.31"
 
-    def test_import_invalid_quantity(self, test_db, sample_customer):
+    def test_import_invalid_quantity(self, app, sample_customer):
         """Test import with invalid quantity values."""
         filename = "invoice-data-3-15.txt"
 
@@ -201,7 +192,7 @@ class TestImportInvoiceFromFiles:
                 sample_customer, filename, items
             )
 
-    def test_import_invalid_rate(self, test_db, sample_customer):
+    def test_import_invalid_rate(self, app, sample_customer):
         """Test import with invalid rate values."""
         filename = "invoice-data-3-15.txt"
 
@@ -219,7 +210,7 @@ class TestImportInvoiceFromFiles:
                 sample_customer, filename, items
             )
 
-    def test_import_invalid_filename_format(self, test_db, sample_customer):
+    def test_import_invalid_filename_format(self, app, sample_customer):
         """Test import with invalid filename formats."""
         items = [
             {
@@ -236,7 +227,7 @@ class TestImportInvoiceFromFiles:
                 sample_customer, "invoice-data-invalid.txt", items
             )
 
-    def test_import_empty_items_list(self, test_db, sample_customer):
+    def test_import_empty_items_list(self, app, sample_customer):
         """Test import with empty items list."""
         filename = "invoice-data-3-15.txt"
         items = []
@@ -253,7 +244,7 @@ class TestImportInvoiceFromFiles:
         assert invoice_data["total"] == 0.0
         assert len(invoice_data["items"]) == 0
 
-    def test_import_calculates_total_correctly(self, test_db, sample_customer):
+    def test_import_calculates_total_correctly(self, app, sample_customer):
         """Test that import calculates total amount correctly."""
         filename = "invoice-data-3-15.txt"
         items = [
@@ -282,7 +273,7 @@ class TestImportInvoiceFromFiles:
         assert invoice_data is not None
         assert invoice_data["total"] == expected_total
 
-    def test_import_preserves_item_order(self, test_db, sample_customer):
+    def test_import_preserves_item_order(self, app, sample_customer):
         """Test that import preserves item order by work date."""
         filename = "invoice-data-3-15.txt"
         items = [
@@ -323,16 +314,7 @@ class TestInvoiceDataRetrieval:
     """Test cases for invoice data retrieval functionality."""
 
     @pytest.fixture
-    def test_db(self):
-        """Create a temporary database for testing."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path = os.path.join(tmp_dir, "test.db")
-            init_db(db_path)
-            yield db_path
-            close_db()
-
-    @pytest.fixture
-    def create_test_customer(self, test_db):
+    def create_test_customer(self):
         """Fixture to create test customers."""
 
         def _create_customer(name, address):
@@ -341,7 +323,7 @@ class TestInvoiceDataRetrieval:
         return _create_customer
 
     @pytest.fixture
-    def create_test_invoice(self, test_db):
+    def create_test_invoice(self):
         """Fixture to create test invoices."""
 
         def _create_invoice(customer_id, invoice_number, total_amount):
@@ -358,7 +340,7 @@ class TestInvoiceDataRetrieval:
 
         return _create_invoice
 
-    def test_get_invoice_data(self, test_db, create_test_customer, create_test_invoice):
+    def test_get_invoice_data(self, app, create_test_customer, create_test_invoice):
         """Test getting invoice data."""
         customer_id = create_test_customer("Test Company", "123 Test St")
         current_year = datetime.now().year
@@ -372,7 +354,7 @@ class TestInvoiceDataRetrieval:
         assert invoice_data["client"]["name"] == "Test Company"
         assert invoice_data["company"]["name"] == "Havelick Software Solutions, LLC"
 
-    def test_get_nonexistent_invoice(self, test_db):
+    def test_get_nonexistent_invoice(self, app):
         """Test getting nonexistent invoice returns None."""
         invoice_data = InvoiceController.get_invoice_data(99999)
         assert invoice_data is None
