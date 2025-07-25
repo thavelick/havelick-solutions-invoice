@@ -106,12 +106,13 @@ class InvoiceController:
         try:
             # Generate invoice metadata from filename
             base_name = os.path.splitext(os.path.basename(invoice_data_file))[0]
+            current_year = datetime.now().year
             if base_name.startswith("invoice-data-"):
                 date_part = base_name.replace("invoice-data-", "")
                 try:
                     month, day = date_part.split("-")
-                    invoice_number = f"2025.{month.zfill(2)}.{day.zfill(2)}"
-                    invoice_date = f"{month.zfill(2)}/{day.zfill(2)}/2025"
+                    invoice_number = f"{current_year}.{month.zfill(2)}.{day.zfill(2)}"
+                    invoice_date = f"{month.zfill(2)}/{day.zfill(2)}/{current_year}"
                     # Calculate due date 30 days out
                     due_date = calculate_due_date(invoice_date, 30)
                 except ValueError as e:
@@ -122,7 +123,7 @@ class InvoiceController:
             else:
                 # Fallback to current date
                 now = datetime.now()
-                invoice_number = f"2025.{now.month:02d}.{now.day:02d}"
+                invoice_number = f"{now.year}.{now.month:02d}.{now.day:02d}"
                 invoice_date = now.strftime("%m/%d/%Y")
                 due_date = calculate_due_date(invoice_date, 30)
 

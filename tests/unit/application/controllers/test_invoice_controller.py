@@ -2,7 +2,7 @@
 
 import os
 import tempfile
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
@@ -60,9 +60,10 @@ class TestImportInvoiceFromFiles:
         # Verify invoice was created with correct metadata
         invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
-        assert invoice_data["invoice_number"] == "2025.03.15"
-        assert invoice_data["invoice_date"] == date(2025, 3, 15)
-        assert invoice_data["due_date"] == date(2025, 4, 14)  # 30 days later
+        current_year = datetime.now().year
+        assert invoice_data["invoice_number"] == f"{current_year}.03.15"
+        assert invoice_data["invoice_date"] == date(current_year, 3, 15)
+        assert invoice_data["due_date"] == date(current_year, 4, 14)  # 30 days later
         assert invoice_data["total"] == 1500.0  # 8*150 + 2*150
 
         # Verify items were added
@@ -93,8 +94,9 @@ class TestImportInvoiceFromFiles:
         # Verify invoice metadata from filename
         invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
-        assert invoice_data["invoice_number"] == "2025.12.25"
-        assert invoice_data["invoice_date"] == date(2025, 12, 25)
+        current_year = datetime.now().year
+        assert invoice_data["invoice_number"] == f"{current_year}.12.25"
+        assert invoice_data["invoice_date"] == date(current_year, 12, 25)
         assert invoice_data["total"] == 800.0  # 4*200
 
         # Verify single item
@@ -153,7 +155,8 @@ class TestImportInvoiceFromFiles:
         )
         invoice_data1 = InvoiceController.get_invoice_data(invoice_id1)
         assert invoice_data1 is not None
-        assert invoice_data1["invoice_number"] == "2025.05.05"
+        current_year = datetime.now().year
+        assert invoice_data1["invoice_number"] == f"{current_year}.05.05"
 
         # Test double digit month and day
         invoice_id2 = InvoiceController.import_invoice_from_files(
@@ -163,7 +166,8 @@ class TestImportInvoiceFromFiles:
         )
         invoice_data2 = InvoiceController.get_invoice_data(invoice_id2)
         assert invoice_data2 is not None
-        assert invoice_data2["invoice_number"] == "2025.12.31"
+        current_year = datetime.now().year
+        assert invoice_data2["invoice_number"] == f"{current_year}.12.31"
 
     def test_import_invalid_quantity(self, test_db, sample_customer):
         """Test import with invalid quantity values."""
@@ -357,11 +361,13 @@ class TestInvoiceDataRetrieval:
     def test_get_invoice_data(self, test_db, create_test_customer, create_test_invoice):
         """Test getting invoice data."""
         customer_id = create_test_customer("Test Company", "123 Test St")
-        invoice_id = create_test_invoice(customer_id, "2025.03.15", 1200.0)
+        current_year = datetime.now().year
+        invoice_number = f"{current_year}.03.15"
+        invoice_id = create_test_invoice(customer_id, invoice_number, 1200.0)
 
         invoice_data = InvoiceController.get_invoice_data(invoice_id)
         assert invoice_data is not None
-        assert invoice_data["invoice_number"] == "2025.03.15"
+        assert invoice_data["invoice_number"] == invoice_number
         assert invoice_data["total"] == 1200.0
         assert invoice_data["client"]["name"] == "Test Company"
         assert invoice_data["company"]["name"] == "Havelick Software Solutions, LLC"
