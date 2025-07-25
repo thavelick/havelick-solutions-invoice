@@ -48,56 +48,26 @@ class LineItem:
     amount: float
 
 
+@dataclass
 class Vendor:
     """Vendor model for managing company information."""
 
-    def __init__(
-        self,
-        id: int,
-        name: str,
-        address: str,
-        email: str,
-        phone: str,
-        created_at: datetime | None,
-    ):
-        self.id = id
-        self.name = name
-        self.address = address
-        self.email = email
-        self.phone = phone
-        self.created_at = created_at
-
-    @staticmethod
-    def from_dict(record) -> "Vendor":
-        """Create Vendor from database record."""
-        return Vendor(
-            id=record["id"],
-            name=record["name"],
-            address=record["address"],
-            email=record["email"],
-            phone=record["phone"],
-            created_at=_parse_datetime_from_db(record["created_at"]),
-        )
+    id: int
+    name: str
+    address: str
+    email: str
+    phone: str
+    created_at: datetime | None
 
 
+@dataclass
 class Customer:
     """Customer model for managing client information."""
 
-    def __init__(self, id: int, name: str, address: str, created_at: datetime | None):
-        self.id = id
-        self.name = name
-        self.address = address
-        self.created_at = created_at
-
-    @staticmethod
-    def from_dict(record) -> "Customer":
-        """Create Customer from database record."""
-        return Customer(
-            id=record["id"],
-            name=record["name"],
-            address=record["address"],
-            created_at=_parse_datetime_from_db(record["created_at"]),
-        )
+    id: int
+    name: str
+    address: str
+    created_at: datetime | None
 
     @staticmethod
     def create(name: str, address: str) -> int:
@@ -123,7 +93,12 @@ class Customer:
         record = cursor.fetchone()
 
         if record:
-            return Customer.from_dict(record)
+            return Customer(
+                id=record["id"],
+                name=record["name"],
+                address=record["address"],
+                created_at=_parse_datetime_from_db(record["created_at"]),
+            )
         return None
 
     @staticmethod
@@ -151,45 +126,29 @@ class Customer:
         cursor.execute("SELECT * FROM customers ORDER BY name")
         records = cursor.fetchall()
 
-        return [Customer.from_dict(record) for record in records]
+        return [
+            Customer(
+                id=record["id"],
+                name=record["name"],
+                address=record["address"],
+                created_at=_parse_datetime_from_db(record["created_at"]),
+            )
+            for record in records
+        ]
 
 
+@dataclass
 class Invoice:
     """Invoice model for managing invoice information."""
 
-    def __init__(
-        self,
-        id: int,
-        invoice_number: str,
-        customer_id: int,
-        vendor_id: int,
-        invoice_date: date | None,
-        due_date: date | None,
-        total_amount: float,
-        created_at: datetime | None,
-    ):
-        self.id = id
-        self.invoice_number = invoice_number
-        self.customer_id = customer_id
-        self.vendor_id = vendor_id
-        self.invoice_date = invoice_date
-        self.due_date = due_date
-        self.total_amount = total_amount
-        self.created_at = created_at
-
-    @staticmethod
-    def from_dict(record) -> "Invoice":
-        """Create Invoice from database record."""
-        return Invoice(
-            id=record["id"],
-            invoice_number=record["invoice_number"],
-            customer_id=record["customer_id"],
-            vendor_id=record["vendor_id"],
-            invoice_date=_parse_date_from_db(record["invoice_date"]),
-            due_date=_parse_date_from_db(record["due_date"]),
-            total_amount=record["total_amount"],
-            created_at=_parse_datetime_from_db(record["created_at"]),
-        )
+    id: int
+    invoice_number: str
+    customer_id: int
+    vendor_id: int
+    invoice_date: date | None
+    due_date: date | None
+    total_amount: float
+    created_at: datetime | None
 
     @staticmethod
     def create(details: InvoiceDetails) -> int:
@@ -310,39 +269,17 @@ class Invoice:
         }
 
 
+@dataclass
 class InvoiceItem:
     """Invoice item model for managing line items."""
 
-    def __init__(
-        self,
-        id: int,
-        invoice_id: int,
-        work_date: date | None,
-        description: str,
-        quantity: float,
-        rate: float,
-        amount: float,
-    ):
-        self.id = id
-        self.invoice_id = invoice_id
-        self.work_date = work_date
-        self.description = description
-        self.quantity = quantity
-        self.rate = rate
-        self.amount = amount
-
-    @staticmethod
-    def from_dict(record) -> "InvoiceItem":
-        """Create InvoiceItem from database record."""
-        return InvoiceItem(
-            id=record["id"],
-            invoice_id=record["invoice_id"],
-            work_date=_parse_date_from_db(record["work_date"]),
-            description=record["description"],
-            quantity=record["quantity"],
-            rate=record["rate"],
-            amount=record["amount"],
-        )
+    id: int
+    invoice_id: int
+    work_date: date | None
+    description: str
+    quantity: float
+    rate: float
+    amount: float
 
     @staticmethod
     def add(item: LineItem):
