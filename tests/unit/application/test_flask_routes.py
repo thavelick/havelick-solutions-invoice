@@ -71,7 +71,9 @@ class TestDashboardRoute:
     def test_dashboard_database_error(self, flask_app):
         """Test dashboard handles database errors gracefully."""
         with patch("application.models.Invoice.get_recent") as mock_get_recent:
-            mock_get_recent.side_effect = sqlite3.Error("Database connection failed")
+            mock_get_recent.side_effect = sqlite3.DatabaseError(
+                "Database connection failed"
+            )
 
             response = flask_app.get("/")
             assert response.status_code == 200
@@ -123,7 +125,7 @@ class TestStatusRoute:
         """Test status endpoint handles database errors and returns 503."""
         with patch("application.db.get_db_connection") as mock_get_connection:
             error_msg = "Database connection failed"
-            mock_get_connection.side_effect = sqlite3.Error(error_msg)
+            mock_get_connection.side_effect = sqlite3.DatabaseError(error_msg)
 
             response = flask_app.get("/status")
             assert response.status_code == 503
@@ -138,7 +140,9 @@ class TestStatusRoute:
         with patch("application.db.get_db_connection") as mock_get_connection:
             # Mock connection that fails on execute
             mock_connection = mock_get_connection.return_value
-            mock_connection.execute.side_effect = sqlite3.Error("Table not found")
+            mock_connection.execute.side_effect = sqlite3.OperationalError(
+                "Table not found"
+            )
 
             response = flask_app.get("/status")
             assert response.status_code == 503
