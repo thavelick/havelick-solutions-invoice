@@ -28,19 +28,6 @@ COMPANY_DATA = {
 }
 
 
-def with_app_context(func):
-    """Decorator to run CLI functions within Flask app context."""
-
-    def wrapper(args):
-        app = create_app()
-        with app.app_context():
-            # Configure database path
-            app.config["DATABASE"] = args.db_path
-            return func(args)
-
-    return wrapper
-
-
 def load_client_data(filepath):
     """Load and validate client data from JSON file."""
     try:
@@ -95,7 +82,6 @@ def legacy_main(client_file, invoice_data_file, output_dir, db_path="invoices.db
         sys.exit(1)
 
 
-@with_app_context
 def cmd_import_items(args):
     """Import invoice items from TSV file."""
     db.init_db(args.db_path)
@@ -114,7 +100,6 @@ def cmd_import_items(args):
     print(f"Imported {len(items)} items for invoice {invoice_id} (Total: ${total:.2f})")
 
 
-@with_app_context
 def cmd_import_customer(args):
     """Import customer from JSON file."""
     db.init_db(args.db_path)
@@ -130,7 +115,6 @@ def cmd_import_customer(args):
     print(f"Imported customer: {customer.name} (ID: {customer_id})")
 
 
-@with_app_context
 def cmd_create_customer(args):
     """Create a new customer."""
     db.init_db(args.db_path)
@@ -139,7 +123,6 @@ def cmd_create_customer(args):
     print(f"Created customer: {args.name} (ID: {customer_id})")
 
 
-@with_app_context
 def cmd_generate_invoice(args):
     """Generate invoice from database."""
     db.init_db(args.db_path)
@@ -155,7 +138,6 @@ def cmd_generate_invoice(args):
     GenerationController.generate_invoice_files(invoice_data, args.output_dir)
 
 
-@with_app_context
 def cmd_list_customers(args):
     """List all customers."""
     db.init_db(args.db_path)
@@ -174,7 +156,6 @@ def cmd_list_customers(args):
         print(f"{customer.id:2d} | {customer.name}")
 
 
-@with_app_context
 def cmd_list_invoices(args):
     """List invoices."""
     db.init_db(args.db_path)
@@ -197,7 +178,6 @@ def cmd_list_invoices(args):
         )
 
 
-@with_app_context
 def cmd_one_shot(args):
     """One-shot command for legacy compatibility."""
     legacy_main(args.client_file, args.invoice_data_file, args.output_dir, args.db_path)
@@ -286,7 +266,11 @@ def main():
     args = parser.parse_args()
 
     if hasattr(args, "func"):
-        args.func(args)
+        app = create_app()
+        with app.app_context():
+            # Configure database path
+            app.config["DATABASE"] = args.db_path
+            args.func(args)
     else:
         parser.print_help()
 
