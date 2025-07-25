@@ -7,7 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from application.db import close_db, init_db
+from application.app import create_app
+from application.date_utils import parse_date_safely
+from application.db import init_db
+from application.models import Customer, Invoice, InvoiceDetails, InvoiceItem, LineItem
 
 
 @pytest.fixture(scope="session")
@@ -79,14 +82,23 @@ def invoice_generator():
     return _generate
 
 
-@pytest.fixture
-def temp_db():
-    """Create a temporary database for testing."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        db_path = os.path.join(tmp_dir, "test.db")
+@pytest.fixture(name="app")
+def fixture_app():
+    """Create Flask app with test database."""
+    db_fd, db_path = tempfile.mkstemp()
+
+    app = create_app()
+    app.config["TESTING"] = True
+    app.config["DEBUG"] = False
+    app.config["DATABASE"] = db_path
+
+    with app.app_context():
         init_db(db_path)
-        yield db_path
-        close_db()
+
+    yield app
+
+    os.close(db_fd)
+    os.unlink(db_path)
 
 
 @pytest.fixture
@@ -94,8 +106,6 @@ def create_test_customer():
     """Fixture to create test customers."""
 
     def _create_customer(name: str = "Test Company", address: str = "123 Test St"):
-        from application.models import Customer
-
         return Customer.create(name, address)
 
     return _create_customer
@@ -110,9 +120,6 @@ def create_test_invoice():
         invoice_number: str = "2025.03.15",
         total_amount: float = 1000.0,
     ):
-        from application.date_utils import parse_date_safely
-        from application.models import Invoice, InvoiceDetails
-
         details = InvoiceDetails(
             invoice_number=invoice_number,
             customer_id=customer_id,
@@ -135,9 +142,6 @@ def create_test_invoice_item():
         quantity: float = 8.0,
         rate: float = 150.0,
     ):
-        from application.date_utils import parse_date_safely
-        from application.models import InvoiceItem, LineItem
-
         line_item = LineItem(
             invoice_id=invoice_id,
             work_date=parse_date_safely("03/15/2025"),
@@ -152,14 +156,14 @@ def create_test_invoice_item():
     return _create_invoice_item
 
 
+@pytest.fixture(autouse=True)
+def app_context(app):
+    """Automatically provide app context to all tests."""
+    with app.app_context():
+        yield
+
+
 @pytest.fixture
-def flask_app(temp_db):
-    """Create Flask test client with test database."""
-    from application.app import create_app
-
-    app = create_app()
-    app.config["TESTING"] = True
-    app.config["DEBUG"] = False
-
-    with app.test_client() as client, app.app_context():
-        yield client
+def flask_app(app):
+    """Create Flask test client."""
+    return app.test_client()

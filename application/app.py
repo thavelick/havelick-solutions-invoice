@@ -5,6 +5,8 @@ import os
 
 from flask import Flask
 
+from . import db, routes
+
 
 def create_app() -> Flask:
     """Create and configure Flask application."""
@@ -17,9 +19,10 @@ def create_app() -> Flask:
     # Configure logging
     configure_logging(app)
 
-    # Register routes
-    from . import routes
+    # Initialize database
+    db.init_app(app)
 
+    # Register routes
     app.register_blueprint(routes.bp)
 
     return app
@@ -34,5 +37,5 @@ def configure_logging(app: Flask) -> None:
 
 
 if __name__ == "__main__":
-    app = create_app()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    flask_app = create_app()
+    flask_app.run(host="0.0.0.0", port=5000, debug=True)
