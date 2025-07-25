@@ -7,7 +7,10 @@ from pathlib import Path
 
 import pytest
 
+from application.app import create_app
+from application.date_utils import parse_date_safely
 from application.db import init_db
+from application.models import Customer, Invoice, InvoiceDetails, InvoiceItem, LineItem
 
 
 @pytest.fixture(scope="session")
@@ -79,12 +82,10 @@ def invoice_generator():
     return _generate
 
 
-@pytest.fixture
-def app():
+@pytest.fixture(name="app")
+def fixture_app():
     """Create Flask app with test database."""
     db_fd, db_path = tempfile.mkstemp()
-
-    from application.app import create_app
 
     app = create_app()
     app.config["TESTING"] = True
@@ -105,8 +106,6 @@ def create_test_customer():
     """Fixture to create test customers."""
 
     def _create_customer(name: str = "Test Company", address: str = "123 Test St"):
-        from application.models import Customer
-
         return Customer.create(name, address)
 
     return _create_customer
@@ -121,9 +120,6 @@ def create_test_invoice():
         invoice_number: str = "2025.03.15",
         total_amount: float = 1000.0,
     ):
-        from application.date_utils import parse_date_safely
-        from application.models import Invoice, InvoiceDetails
-
         details = InvoiceDetails(
             invoice_number=invoice_number,
             customer_id=customer_id,
@@ -146,9 +142,6 @@ def create_test_invoice_item():
         quantity: float = 8.0,
         rate: float = 150.0,
     ):
-        from application.date_utils import parse_date_safely
-        from application.models import InvoiceItem, LineItem
-
         line_item = LineItem(
             invoice_id=invoice_id,
             work_date=parse_date_safely("03/15/2025"),

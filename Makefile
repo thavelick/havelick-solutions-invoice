@@ -32,7 +32,7 @@ lint: # Run linters (ruff, pyright, pylint)
 	@echo "Running pyright type checker.."
 	uv run pyright
 	@echo "Running pylint.."
-	uv run pylint --ignore-paths=tests/ --ignore=playwright.config.py *.py
+	uv run pylint *.py application/ tests/
 
 add-dev-dependency: # Add development dependency (usage: make add-dev-dependency DEP=package-name)
 	@echo "Adding development dependency: $(DEP)"

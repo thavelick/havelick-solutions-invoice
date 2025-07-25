@@ -1,13 +1,10 @@
 """Unit tests for invoice controller functionality."""
 
-import os
-import tempfile
 from datetime import date, datetime
 
 import pytest
 
 from application.controllers.invoice_controller import InvoiceController
-from application.db import close_db, init_db
 from application.models import Customer
 
 

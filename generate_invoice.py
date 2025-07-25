@@ -13,8 +13,8 @@ from application import db
 from application.app import create_app
 from application.client_parser import parse_client_data
 from application.controllers.customer_controller import CustomerController
-from application.controllers.generation_controller import GenerationController
 from application.controllers.invoice_controller import InvoiceController
+from application.controllers.invoice_generator import generate_invoice_files
 from application.invoice_parser import parse_invoice_data
 
 # Company data (static)
@@ -76,7 +76,7 @@ def legacy_main(client_file, invoice_data_file, output_dir, db_path="invoices.db
         }
 
         # Generate output files
-        GenerationController.generate_invoice_files(data, output_dir)
+        generate_invoice_files(data, output_dir)
     except (OSError, ValueError, FileNotFoundError) as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -135,7 +135,7 @@ def cmd_generate_invoice(args):
         sys.exit(1)
 
     # Generate output files
-    GenerationController.generate_invoice_files(invoice_data, args.output_dir)
+    generate_invoice_files(invoice_data, args.output_dir)
 
 
 def cmd_list_customers(args):
