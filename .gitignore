@@ -63,3 +63,6 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+# Scratch directory for temporary files
+scratch/
